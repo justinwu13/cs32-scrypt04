@@ -55,7 +55,7 @@ void InfixParser::checkValidity(Value& param1, Value& param2, std::string op) { 
             runTimeError("Runtime error: invalid operand type.");
         }
     }
-    else if (op == "==" || op == "!=") {
+    else if (op == "==" || op == "!=") { //deprecated case
         if (param1.type != param2.type) {
             runTimeError("Runtime error: invalid operand type.");
         }
@@ -97,10 +97,10 @@ void InfixParser::diffCases(Value& result, Node& root, Token& t){
         greaterequalText(result,root,t);
     }
     else if (t.tokenText == "==") {
-        doubleEqual(result,root,t);
+        doubleEqual(result,root);
     }
     else if (t.tokenText == "!=") {
-        notEqual(result,root,t);
+        notEqual(result,root);
     }
     else if (t.tokenText == "&") {
         andText(result,root,t);
@@ -211,12 +211,17 @@ void InfixParser::greaterequalText(Value &result, Node &root, Token &t){
     }
 }
 
-void InfixParser::doubleEqual(Value& result, Node& root, Token& t){
+void InfixParser::doubleEqual(Value& result, Node& root){
   for(unsigned int i = 1; i < root.children.size(); i++) {
-      Value intermediate = evaluateHelper(root.children.at(i));
-      checkValidity(result, intermediate, t.tokenText);
-       Value::TypeTag compareType = result.type;
-       result.type = Value::BOOL;
+        Value intermediate = evaluateHelper(root.children.at(i));
+        Value::TypeTag compareType = result.type;
+        result.type = Value::BOOL;
+
+        if(result.type != intermediate.type) {
+            result.bool_value = false;
+            return;
+        }
+
         if (compareType == Value::DOUBLE) {
             result.bool_value = (result.double_value == intermediate.double_value);
         }
@@ -226,12 +231,17 @@ void InfixParser::doubleEqual(Value& result, Node& root, Token& t){
    }
 }
 
-void InfixParser::notEqual(Value& result, Node& root, Token& t){
+void InfixParser::notEqual(Value& result, Node& root){
     for(unsigned int i = 1; i < root.children.size(); i++) {
         Value intermediate = evaluateHelper(root.children.at(i));
-        checkValidity(result, intermediate, t.tokenText);
         Value::TypeTag compareType = result.type;
         result.type = Value::BOOL;
+
+        if(result.type != intermediate.type) {
+            result.bool_value = false;
+            return;
+        }
+
         if (compareType == Value::DOUBLE) {
             result.bool_value = (result.double_value != intermediate.double_value);
         }
