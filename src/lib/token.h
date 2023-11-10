@@ -13,6 +13,7 @@ enum TokenType {
     Boolean,
     Statement,
     CurlyBrac,
+    SquareBrac,
     Comma,
     Semicolon,
     End
