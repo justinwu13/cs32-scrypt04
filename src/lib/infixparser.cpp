@@ -510,7 +510,7 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
 
     while(index < lexed.size()) {
         Token t2 = lexed.at(++index); // should be an operator or ")" or End token
-        if(t2.tokenType == End) {
+        if(t2.tokenType == End || t2.tokenType == Assignment) {
             return lhs;
         }
         else if(t2.tokenText == ")") {// end the current subtree when reaching ")"
@@ -519,9 +519,6 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
             }
             parenCounter--;
             index++;
-            return lhs;
-        }
-        else if(t2.tokenType == Assignment) {
             return lhs;
         }
         else if(t2.tokenType != Operator && t2.tokenType != LogicOperator) {
