@@ -28,6 +28,10 @@ TokenType Lexer::determineType(char c) { //determines the type of token for the 
         case '{':
         case '}':
             return CurlyBrac;
+        case ',':
+            return Comma;
+        case ';':
+            return Semicolon;
         case '+':
         case '-':
         case '*':
@@ -93,12 +97,18 @@ Lexer::Lexer(std::istream& input) {
                 typeParenthesis(lineNumber,  columnNumber,  tokenText);
             }
 
-            else if (tokenType == CurlyBrac) {
+            else if (tokenType == CurlyBrac) { // easy case #2
                 typeCurlyBrac(lineNumber, columnNumber, tokenText);
             }
 
-            else if (tokenType == Operator) { // easy case #2
+            else if (tokenType == Operator) { // easy case #3
                 typeOperator(lineNumber, columnNumber, tokenText);
+            }
+            else if (tokenType == Comma) { // easy case #4
+                typeComma(lineNumber, columnNumber, tokenText);
+            }
+            else if (tokenType == Semicolon) { // easy case #5
+                typeSemicolon(lineNumber, columnNumber, tokenText);
             }
         } 
 
@@ -183,6 +193,16 @@ void Lexer::typeCurlyBrac(int lineNumber, unsigned int& columnNumber, char token
 void Lexer::typeOperator(int lineNumber, unsigned int& columnNumber, char tokenText) {
     Token oper1 = Token(Token(lineNumber, columnNumber, std::string(1, tokenText), Operator));
     tokens.push_back(oper1);
+}
+
+void Lexer::typeComma(int lineNumber, unsigned int& columnNumber, char tokenText) {
+    Token comma = Token(lineNumber, columnNumber, std::string(1, tokenText), Comma);
+    tokens.push_back(comma);
+}
+
+void Lexer::typeSemicolon(int lineNumber, unsigned int& columnNumber, char tokenText) {
+    Token semicolon = Token(lineNumber, columnNumber, std::string(1, tokenText), Semicolon);
+    tokens.push_back(semicolon);
 }
 
 void Lexer::typeLogicOperator(int lineNumber, unsigned int& columnNumber, std::string line, char tokenText) {
