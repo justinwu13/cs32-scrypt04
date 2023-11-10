@@ -29,15 +29,22 @@ void StatementParser::printProcedureHelper(StatementNode& statement) {
     }    
 
     std::cout << statement.statementToken.tokenText;
+    // whitespace, otherwise would end up with output like "printsteps" or "ifx > 1 {"
     if(statement.statementToken.tokenType == Statement && statement.statementToken.tokenText != "else") {
         std::cout << " ";
     }
     par.printTree(statement.infixExpression);
+    // all statements except for print have their own set of curly brackets
     if(statement.statementToken.tokenType == Statement && statement.statementToken.tokenText != "print") {
         std::cout << " {";
     }
+    // all bare expressions, print statements, and return statements have semicolon 
+    if(statement.statementToken.tokenType != Statement || statement.statementToken.tokenText == "print") {
+        std::cout << ";";
+    }
     std::cout << std::endl;
     
+    // recursively print the statements stored in each block 
     for(StatementNode& s: statement.children) {
         printProcedureHelper(s);
     }
@@ -52,9 +59,8 @@ void StatementParser::printProcedureHelper(StatementNode& statement) {
 
 // only reads/stores input, does not organize into blocks yet 
 void StatementParser::readStatements(std::vector<Token>& lexed) {
-    par.clearAST(); // not sure if necessary or even good
+    par.clearAST(); 
 
-    // not sure if this is ok, this may need to be changed
     if(lexed.size() <= 1) {
         return;
     }
@@ -74,10 +80,11 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
             else if(second.tokenText == "if") {
                 statements.at(statements.size() - 1).statementToken.tokenText = "elif"; // changes else to elif if "if" follows
                 Token last = lexed.at(lexed.size() - 2);
-                if(last.tokenText != "{") {
+                if(last.tokenText != "{") { // throw error if doesn't end line with "{"
                     par.unexpectedTokenError(last);
                 }
                 statement.statementToken = second;
+                // remove everything that isn't part of an infix expression so InfixParser can read it
                 lexed.erase(lexed.begin());
                 lexed.erase(lexed.begin());
                 lexed.erase(lexed.end() - 2);
@@ -87,12 +94,17 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
             }
         }
         else if(first.tokenText == "print") {
-            lexed.erase(lexed.begin());
-        }
-        else {// should be if or while
-            if(lexed.at(lexed.size() - 2).tokenText != "{") {
+            if(lexed.at(lexed.size() - 2).tokenText != ";") { // should have ; at end, else throw error
                 par.unexpectedTokenError(lexed.at(lexed.size() - 2));
             }
+            lexed.erase(lexed.begin());
+            lexed.erase(lexed.end() - 2);
+        }
+        else {// should be if or while
+            if(lexed.at(lexed.size() - 2).tokenText != "{") { // throw error if doesn't end line with "{"
+                par.unexpectedTokenError(lexed.at(lexed.size() - 2));
+            }
+            // remove everything that isn't part of an infix expression so InfixParser can read it
             lexed.erase(lexed.begin());
             lexed.erase(lexed.end() - 2);
         }
@@ -106,20 +118,23 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
         statements.push_back(statement);
         return;
     }
-    par.fillTreeInfix(lexed);
+    else { // bare expression
+        if(lexed.at(lexed.size() - 2).tokenText != ";") { // should have ; at end, else throw error
+            par.unexpectedTokenError(lexed.at(lexed.size() - 2));
+        }
+        lexed.erase(lexed.end() - 2); // remove semicolon
+    }
+    par.fillTreeInfix(lexed); // InfixParser reads the remaining tokens
     statement.infixExpression = par.root;
     statements.push_back(statement);
 }
 
 // organizes statements into blocks
 void StatementParser::fillProcedure() {
-    unsigned int index = 0;
-    fillSubProcedure(procedure, index, 0);
-
-    
+    unsigned int index = 0; // index can be updated by every instance of fillSubProcedure as it is passed by reference
+    fillSubProcedure(procedure, index, 0); 
 }
 
-// doesn't check if there are statements after last "}" but still passes all gradescope tests for now so idk
 void StatementParser::fillSubProcedure(std::vector<StatementNode>& currBlock, unsigned int& index, int indentation) {
     while(index < statements.size()) {
         StatementNode s = statements.at(index);
@@ -128,20 +143,19 @@ void StatementParser::fillSubProcedure(std::vector<StatementNode>& currBlock, un
         if(s.statementToken.tokenType == Statement && s.statementToken.tokenText != "print") {
             if(s.statementToken.tokenText == "elif") {
                 s.statementToken.tokenText = "else"; // changes elif back to else for proper output
-                fillElif(s.children, ++index, indentation + 1);
+                fillElif(s.children, ++index, indentation + 1); // special call for else if
             }
-            else {
-                fillSubProcedure(s.children, ++index, indentation + 1);
+            else { // while, if, and else blocks fill recursively, new "currBlock" is their children vector 
+                fillSubProcedure(s.children, ++index, indentation + 1); 
                 braceCounter++;
             }
             currBlock.push_back(s);
         }
-        else if(s.statementToken.tokenText == "}") {
+        else if(s.statementToken.tokenText == "}") { // end current block if "}" encountered
             if(indentation == 0) {
                 par.unexpectedTokenError(s.statementToken);
             }
             s.indentationLevel--;
-            //currBlock.push_back(s);
             braceCounter--;
             return;
         }
@@ -154,7 +168,7 @@ void StatementParser::fillSubProcedure(std::vector<StatementNode>& currBlock, un
 }
 
 // helper function specific for else if case
-// only gets the following if/else block
+// only gets the following if block as well as possible else block 
 void StatementParser::fillElif(std::vector<StatementNode>& currBlock, unsigned int& index, int indentation) {
     StatementNode ifNode = statements.at(index); // should be an if statement
     ifNode.indentationLevel = indentation;
@@ -179,13 +193,14 @@ void StatementParser::fillElif(std::vector<StatementNode>& currBlock, unsigned i
 }
 
 void StatementParser::runProcedure() {
-    runProcedure(procedure);
+    runProcedure(procedure); 
 }
 
+// runs the statements in the specified block
 void StatementParser::runProcedure(std::vector<StatementNode>& currBlock) {
-    for(unsigned int i = 0; i < currBlock.size(); i++) {
+    for(unsigned int i = 0; i < currBlock.size(); i++) { // runs every statement in the block
         StatementNode& s = currBlock.at(i);
-        runProcedureHelper(currBlock, s, i);
+        runProcedureHelper(currBlock, s, i); 
     }
 }
 
@@ -193,45 +208,42 @@ void StatementParser::runProcedureHelper(std::vector<StatementNode>& currBlock, 
     if(s.statementToken.tokenType == Statement) {
         std::string instruction = s.statementToken.tokenText;
 
-        if(instruction == "print") {
+        if(instruction == "print") { // simple case
             std::cout << par.evaluate(s.infixExpression) << std::endl;
         }
         else if(instruction == "if") {
             Value condition = par.evaluate(s.infixExpression);
-            if(condition.type != Value::BOOL) {
+            if(condition.type != Value::BOOL) { // throw error if condition does not evaluate to bool
                 std::cout << "Runtime error: condition is not a bool." << std::endl;
                 throw 3;
             }
 
-            if(condition.bool_value == true) {
+            if(condition.bool_value == true) { // if block runs if condition is true
                 if(index + 1 < currBlock.size() && currBlock.at(index + 1).statementToken.tokenText == "else") {
-                    index++; // skips else block if condition is true
+                    index++; // skips following else block if condition is true
                 }
-                runProcedure(s.children);
+                runProcedure(s.children); // run the statements in the block
             }
         }
         else if(instruction == "while") {
-            while(true) {
+            while(true) { // keep running the block
                 Value condition = par.evaluate(s.infixExpression);
-                if(condition.type != Value::BOOL) {
+                if(condition.type != Value::BOOL) { // throw error if condition does not evaluate to bool
                     std::cout << "Runtime error: condition is not a bool." << std::endl;
                     throw 3;
                 }
 
                 if(condition.bool_value == true) {
-                    if(index + 1 < currBlock.size() && currBlock.at(index + 1).statementToken.tokenText == "else") {
-                        index++; // skips else block if condition is true
-                    }
-                    runProcedure(s.children);
+                    runProcedure(s.children); // run the statements in the block
                 }
                 else {
-                    break;
+                    break; // stop running the block if the condition is false
                 }
             }
             
         }
-        else { // should be "else"
-            runProcedure(s.children);
+        else { // should be "else", this case will only run if the previous "if" did not run
+            runProcedure(s.children); // run the statements in the block
         }
     }
     else { // should be an expression
