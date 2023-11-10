@@ -117,7 +117,8 @@ void InfixParser::equalText(Value& result, Node& root){
     for(unsigned int i = 0; i < root.children.size() - 1; i++) {// checks all children except rightmost
         Node& n = root.children.at(i);
         if(n.data.tokenType != Identifier) {// throw error if not variable
-            unexpectedTokenError(n.data);
+            std::cout << "Runtime error: invalid assignee." << std::endl;
+            throw 3;
         }
         if(variables.find(n.data.tokenText) == variables.end()) {// create variable data
             variables.emplace(n.data.tokenText, result);
@@ -475,9 +476,6 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             lhs = opNode; 
 
             if(t.tokenType == Assignment) {
-                if(lhs.children.at(0).data.tokenType != Identifier) {// throw error if prev token is not variable
-                    unexpectedTokenError(t);
-                }
                 index++;
                 return lhs;
             }
@@ -521,6 +519,9 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
             }
             parenCounter--;
             index++;
+            return lhs;
+        }
+        else if(t2.tokenType == Assignment) {
             return lhs;
         }
         else if(t2.tokenType != Operator && t2.tokenType != LogicOperator) {
