@@ -413,6 +413,7 @@ void InfixParser::fillTreeInfix(std::vector<Token>& lexed) {
     root = fillTreeSubexpression(lexed, index);
 
     if(parenCounter != 0) {// throw error if parentheses are unbalanced
+        std::cout << "a" << std::endl;
         unexpectedTokenError(lexed.at(lexed.size() - 1));
     }
 
@@ -444,9 +445,12 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
         parenCounter++;
         index++;
         lhs = fillTreeSubexpression(lexed, index);
-        if(lhs.children.size() == 0) {
-            return lhs;
-        }
+        // if(lhs.children.size() == 0) {
+
+        //     std::cout << "test" << std::endl;
+        //     return lhs;
+        // }
+        index++;
     }
     else {
         unexpectedTokenError(t1);
@@ -459,7 +463,9 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             break;
         }
         else if(t.tokenText == ")") {// end the current subtree when reaching ")"
-            index++;
+            if(t1.tokenText != "(") {
+                index++;
+            }
             if(parenCounter == 0) {// throw error if ")" outnumbers "(" 
                 unexpectedTokenError(t);
             }
