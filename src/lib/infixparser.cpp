@@ -46,12 +46,12 @@ Value InfixParser::evaluate(Node root) {
 
 void InfixParser::checkValidity(Value& param1, Value& param2, std::string op) { // determines if the data types of the values are valid for the given operation
     if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%" || op.at(0) == '>' || op.at(0) == '<') {
-        if (param1.type == Value::BOOL || param2.type == Value::BOOL) {
+        if (!(param1.type == Value::DOUBLE && param2.type == Value::DOUBLE)) {
             runTimeError("Runtime error: invalid operand type.");
         }
     }
     else if (op == "&" || op == "^" || op == "|") {
-        if (param1.type == Value::DOUBLE || param2.type == Value::DOUBLE) {
+        if (!(param1.type == Value::BOOL && param2.type == Value::BOOL)) {
             runTimeError("Runtime error: invalid operand type.");
         }
     }
@@ -279,6 +279,14 @@ void InfixParser::caretText(Value& result, Node& root, Token& t){
 
 Value InfixParser::evaluateHelper(Node root) {
     Token t = root.data;
+    if (t.tokenText == "[") {
+        std::vector<Value*> arr;
+        for (Node n : root.children) {
+            Value val = evaluateHelper(n);
+            arr.push_back(&val);
+        }
+        return Value(arr);
+    }
     if(t.tokenType == Number) {// return number value
         return Value(std::stod(t.tokenText));
     }
@@ -291,7 +299,29 @@ Value InfixParser::evaluateHelper(Node root) {
             runTimeError(output);
             return -123.4567;
         }
-        return variables.at(t.tokenText); // return variable value
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+            Value arrIndex = evaluateHelper(root.children.at(0).children.at(0));
+            if (arrIndex.type != Value::DOUBLE) {
+                std::string output = "Runtime error: index is not a number.";
+                runTimeError(output);
+                return -123.4567;
+            }
+            double filler; // used solely as parameter for modf function
+            if (modf(arrIndex.double_value, &filler) != 0) {
+                std::string output = "Runtime error: index is not an integer.";
+                runTimeError(output);
+                return -123.4567;
+            }
+            if (arrIndex.double_value > variables.at(t.tokenText).arr_value.size()) {
+                std::string output = "Runtime error: index out of bounds.";
+                runTimeError(output);
+                return -123.4567;
+            }
+            return variables.at(t.tokenText).arr_value.at(arrIndex.double_value);
+        }
+        else {
+            return variables.at(t.tokenText); // return variable value
+        }
     }
     
     if(root.children.size() == 0) {
@@ -336,31 +366,55 @@ void InfixParser::printTreeHelper(Node root) const {
         std::cout << "(";
     }
 
-    if(root.data.tokenType == Number) {
-        std::cout << std::stod(root.data.tokenText);
-    }
-    else if(root.data.tokenType == Identifier) {
-        std::cout << root.data.tokenText;
-    }
-    else if (root.data.tokenType == Boolean) {
-        std::cout << root.data.tokenText;
-    }
-
-    // prints the operator between the children
-    for(unsigned int i = 0; i < root.children.size(); i++) {
-        Node n = root.children.at(i);
-        if(i == 0) {
-            printTreeHelper(n);
+    if (root.data.tokenText == "[") { // print out an array
+        std::cout << "[";
+        for(unsigned int i = 0; i < root.children.size(); i++) {
+            Node n = root.children.at(i);
+            if(i == 0) {
+                printTreeHelper(n);
+            }
+            else {
+                std::cout << ", ";
+                printTreeHelper(n);
+            }
         }
-        else {
-            std::cout << " " << root.data.tokenText << " ";
-            printTreeHelper(n);
-        }
+        std::cout << "]";
     }
+    else {
+        if(root.data.tokenType == Number) {
+            std::cout << std::stod(root.data.tokenText);
+        }
+        else if(root.data.tokenType == Identifier) {
+            std::cout << root.data.tokenText;
+        }
+        else if (root.data.tokenType == Boolean) {
+            std::cout << root.data.tokenText;
+        }
 
-    // prints parenthesis for each operator
-    if(op) {
-        std::cout << ")";
+        // prints the operator between the children
+        for(unsigned int i = 0; i < root.children.size(); i++) {
+            Node n = root.children.at(i);
+            if (i == 0) {
+                if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+                    // print out an array index
+                    std::cout << "[";
+                    printTreeHelper(root.children.at(0).children.at(0)); // print index
+                    std::cout << "]" << std::endl;
+                }
+                else {
+                    printTreeHelper(n);
+                }
+            }
+            else {
+                std::cout << " " << root.data.tokenText << " ";
+                printTreeHelper(n);
+            }
+        }
+
+        // prints parenthesis for each operator
+        if(op) {
+            std::cout << ")";
+        }
     }
 }
 
@@ -422,7 +476,6 @@ void InfixParser::fillTreeInfix(std::vector<Token>& lexed) {
 // Add stuff for assignment operator once Lexer is updated
 InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index) {
     Node lhs = Node(Token());
-
     Token t1 = lexed.at(index);
     if(t1.tokenType == Number || t1.tokenType == Identifier || t1.tokenType == Boolean) {
         lhs = Node(t1);
@@ -430,23 +483,33 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
         if(t2.tokenType == End) {
             // if the first token is a number and the second is End, return because there is nothing
             // more to do
-            return Node(t1);
+            return lhs;
         }
-        else if(t2.tokenText == ")") {// end the current subtree when reaching ")"
+        else if(t2.tokenText == ")") { // end the current subtree when reaching ")"
             if(parenCounter == 0) {// throw error if ")" outnumbers "(" 
                 unexpectedTokenError(t2);
             }
             parenCounter--;
-            return Node(t1);
+            return lhs;
+        }
+        else if (t2.tokenText == ",") { // end subtree when reaching comma
+            return lhs;
+        }
+        else if (t2.tokenText == "]") { // end subtree when reaching right bracket
+            index--;
+            return lhs;
         }
     }
-    else if(t1.tokenText == "(") {// treat everything inside parethesis as its own subtree/subexpression
+    else if(t1.tokenText == "(") {// treat everything inside parenthesis as its own subtree/subexpression
         parenCounter++;
         index++;
         lhs = fillTreeSubexpression(lexed, index);
         if(lhs.children.size() == 0) {
             return lhs;
         }
+    }
+    else if(t1.tokenText == "[") { // array
+        lhs = buildArray(lexed, index);
     }
     else {
         unexpectedTokenError(t1);
@@ -465,6 +528,20 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             }
             parenCounter--;
             break;
+        }
+        else if(t.tokenText == ",") {// end the current subtree when reaching ","
+            break;
+        }
+        else if(t.tokenText == "]") {// end the current subtree when reaching "]"
+            index--;
+            break;
+        }
+        else if (t.tokenText == "[") { // array index
+            Node arrIndex = Node(Token(t.lineNumber, t.columnNumber, t.tokenText, ArrayIndex));
+            index++;
+            arrIndex.children.push_back(fillTreeSubexpression(lexed, index));
+            lhs.children.push_back(arrIndex); // makes first child of the Identifier node an ArrayIndex type
+            index++;
         }
         else if(t.tokenType == Operator || t.tokenType == Assignment || t.tokenType == LogicOperator) {
             Node opNode = Node(t); // new head of the tree/subtree 
@@ -531,6 +608,19 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
             index++;
             return lhs;
         }
+        else if(t2.tokenText == ",") {// end the current subtree when reaching ","
+            return lhs;
+        }
+        else if(t2.tokenText == "]") {// end the current subtree when reaching "]"
+            index--;
+            return lhs;
+        }
+        else if (t2.tokenText == "[") {
+            Node arrIndex = Node(Token(t2.lineNumber, t2.columnNumber, t2.tokenText, ArrayIndex));
+            index++;
+            arrIndex.children.push_back(fillTreeSubexpression(lexed, index));
+            lhs.children.push_back(arrIndex); // makes first child of the Identifier node an ArrayIndex type
+        }
         else if(t2.tokenType != Operator && t2.tokenType != LogicOperator) {
             unexpectedTokenError(t2);
         }
@@ -549,4 +639,27 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
     }
 
     return lhs;
+}
+
+InfixParser::Node InfixParser::buildArray(std::vector<Token>& lexed, unsigned int& index) {
+    Token t = lexed.at(index); // should be left square bracket
+    Node arrHead = Node(t);
+    while(index < lexed.size() - 1) {
+        Token t2 = lexed.at(++index);
+        if(t2.tokenType == End || t2.tokenType == Assignment) {
+            return arrHead;
+        }
+        else if(t2.tokenType == Comma) {
+            continue;
+        }
+        else if (t2.tokenText == "]") {
+            index++;
+            return arrHead;
+        }
+        else {
+            Node child = fillTreeSubexpression(lexed, index);
+            arrHead.children.push_back(child); // adds all the elements of the array as a child to the left bracket node
+        }
+    }
+    return arrHead;
 }
