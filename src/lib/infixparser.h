@@ -47,8 +47,8 @@ class InfixParser {
         void lessequalText(Value& result, Node& root, Token& t);
         void greaterText(Value& result, Node& root, Token& t);
         void greaterequalText(Value& result, Node& root, Token& t);
-        void doubleEqual(Value& result, Node& root, Token& t);
-        void notEqual(Value& result, Node& root, Token& t);
+        void doubleEqual(Value& result, Node& root);
+        void notEqual(Value& result, Node& root);
         void andText(Value& result, Node& root, Token& t);
         void orText(Value& result, Node& root, Token& t);
         void caretText(Value& result, Node& root, Token& t);

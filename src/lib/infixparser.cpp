@@ -55,7 +55,7 @@ void InfixParser::checkValidity(Value& param1, Value& param2, std::string op) { 
             runTimeError("Runtime error: invalid operand type.");
         }
     }
-    else if (op == "==" || op == "!=") {
+    else if (op == "==" || op == "!=") { //deprecated case
         if (param1.type != param2.type) {
             runTimeError("Runtime error: invalid operand type.");
         }
@@ -97,10 +97,10 @@ void InfixParser::diffCases(Value& result, Node& root, Token& t){
         greaterequalText(result,root,t);
     }
     else if (t.tokenText == "==") {
-        doubleEqual(result,root,t);
+        doubleEqual(result,root);
     }
     else if (t.tokenText == "!=") {
-        notEqual(result,root,t);
+        notEqual(result,root);
     }
     else if (t.tokenText == "&") {
         andText(result,root,t);
@@ -117,7 +117,8 @@ void InfixParser::equalText(Value& result, Node& root){
     for(unsigned int i = 0; i < root.children.size() - 1; i++) {// checks all children except rightmost
         Node& n = root.children.at(i);
         if(n.data.tokenType != Identifier) {// throw error if not variable
-            unexpectedTokenError(n.data);
+            std::cout << "Runtime error: invalid assignee." << std::endl;
+            throw 3;
         }
         if(variables.find(n.data.tokenText) == variables.end()) {// create variable data
             variables.emplace(n.data.tokenText, result);
@@ -210,12 +211,17 @@ void InfixParser::greaterequalText(Value &result, Node &root, Token &t){
     }
 }
 
-void InfixParser::doubleEqual(Value& result, Node& root, Token& t){
+void InfixParser::doubleEqual(Value& result, Node& root){
   for(unsigned int i = 1; i < root.children.size(); i++) {
-      Value intermediate = evaluateHelper(root.children.at(i));
-      checkValidity(result, intermediate, t.tokenText);
-       Value::TypeTag compareType = result.type;
-       result.type = Value::BOOL;
+        Value intermediate = evaluateHelper(root.children.at(i));
+        Value::TypeTag compareType = result.type;
+        result.type = Value::BOOL;
+
+        if(result.type != intermediate.type) {
+            result.bool_value = false;
+            return;
+        }
+
         if (compareType == Value::DOUBLE) {
             result.bool_value = (result.double_value == intermediate.double_value);
         }
@@ -225,12 +231,17 @@ void InfixParser::doubleEqual(Value& result, Node& root, Token& t){
    }
 }
 
-void InfixParser::notEqual(Value& result, Node& root, Token& t){
+void InfixParser::notEqual(Value& result, Node& root){
     for(unsigned int i = 1; i < root.children.size(); i++) {
         Value intermediate = evaluateHelper(root.children.at(i));
-        checkValidity(result, intermediate, t.tokenText);
         Value::TypeTag compareType = result.type;
         result.type = Value::BOOL;
+
+        if(result.type != intermediate.type) {
+            result.bool_value = false;
+            return;
+        }
+
         if (compareType == Value::DOUBLE) {
             result.bool_value = (result.double_value != intermediate.double_value);
         }
@@ -402,6 +413,7 @@ void InfixParser::fillTreeInfix(std::vector<Token>& lexed) {
     root = fillTreeSubexpression(lexed, index);
 
     if(parenCounter != 0) {// throw error if parentheses are unbalanced
+        std::cout << "a" << std::endl;
         unexpectedTokenError(lexed.at(lexed.size() - 1));
     }
 
@@ -433,9 +445,12 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
         parenCounter++;
         index++;
         lhs = fillTreeSubexpression(lexed, index);
-        if(lhs.children.size() == 0) {
-            return lhs;
-        }
+        // if(lhs.children.size() == 0) {
+
+        //     std::cout << "test" << std::endl;
+        //     return lhs;
+        // }
+        index++;
     }
     else {
         unexpectedTokenError(t1);
@@ -448,7 +463,9 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             break;
         }
         else if(t.tokenText == ")") {// end the current subtree when reaching ")"
-            index++;
+            if(t1.tokenText != "(") {
+                index++;
+            }
             if(parenCounter == 0) {// throw error if ")" outnumbers "(" 
                 unexpectedTokenError(t);
             }
@@ -475,9 +492,6 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             lhs = opNode; 
 
             if(t.tokenType == Assignment) {
-                if(lhs.children.at(0).data.tokenType != Identifier) {// throw error if prev token is not variable
-                    unexpectedTokenError(t);
-                }
                 index++;
                 return lhs;
             }
@@ -512,7 +526,7 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
 
     while(index < lexed.size()) {
         Token t2 = lexed.at(++index); // should be an operator or ")" or End token
-        if(t2.tokenType == End) {
+        if(t2.tokenType == End || t2.tokenType == Assignment) {
             return lhs;
         }
         else if(t2.tokenText == ")") {// end the current subtree when reaching ")"

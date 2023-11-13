@@ -21,6 +21,8 @@ class Lexer {
         void typeParenthesis(int lineNumber, unsigned int& columnNumber, char tokenText);
         void typeCurlyBrac(int lineNumber, unsigned int& columnNumber, char tokenText);
         void typeOperator(int lineNumber, unsigned int& columnNumber, char tokenText);
+        void typeComma(int lineNumber, unsigned int& columnNumber, char tokenText);
+        void typeSemicolon(int lineNumber, unsigned int& columnNumber, char tokenText);
         void typeLogicOperator(int lineNumber, unsigned int& columnNumber, std::string line, char tokenText);
         void typeAssignment(int lineNumber, unsigned int& columnNumber, std::string line, char tokenText);
         void printTokens() const;
