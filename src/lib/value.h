@@ -4,6 +4,26 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <variant>
+
+/**
+struct Value : public std::variant<
+    double,
+    bool,
+    std::vector<Value*>
+>
+{
+    double double_value() {
+        return std::get<double>(*this);
+    }
+    bool bool_value() {
+        return std::get<double>(*this);
+    }
+    std::vector<Value*> arr_value() {
+        return std::get<std::vector<Value*>>(*this);
+    }
+}
+*/
 
 struct Value {
     enum TypeTag {
@@ -20,6 +40,7 @@ struct Value {
     };
 
     ~Value() {}
+
     Value(Value const& value) {
         type = value.type;
         if (value.type == BOOL) {
@@ -34,6 +55,7 @@ struct Value {
     }
 
     Value& operator= (const Value& value) {
+        type = value.type;
         if (value.type == BOOL) {
             bool_value = value.bool_value;
         }
@@ -62,5 +84,6 @@ struct Value {
         type = ARRAY;
     }
 };
+
 
 std::ostream& operator << (std::ostream& stream, const Value& value);
