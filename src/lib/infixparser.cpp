@@ -124,12 +124,12 @@ void InfixParser::equalText(Value& result, Node& root){
             variables.emplace(n.data.tokenText, result);
         }
         else {// update variable if variable has existing value
-            int j = 0;
-            if (n.children.at(j).data.tokenType == ArrayIndex) {
+            unsigned int j = 0;
+            if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
                 std::cout << "hi" << std::endl;
                 Value* v = &variables[n.data.tokenText];
                 Value arrIndex = evaluateHelper(n.children.at(j).children.at(0));
-                while (n.children.at(j).data.tokenType == ArrayIndex) { // multidimensional array handling
+                while (j < n.children.size() && n.children.at(j).data.tokenType == ArrayIndex) { // multidimensional array handling
                     if (arrIndex.type != Value::DOUBLE) {
                         std::string output = "Runtime error: index is not a number.";
                         runTimeError(output);
@@ -540,7 +540,6 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
     }
     else if(t1.tokenText == "[") { // array
         lhs = buildArray(lexed, index);
-        return lhs;
     }
     else {
         unexpectedTokenError(t1);
@@ -578,9 +577,10 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
                 unexpectedTokenError(lexed.at(index));
             }
             std::cout << lexed.at(index).tokenText << std::endl;
-            while (index < lexed.size() && lexed.at(index).tokenText != "[") {
+            while (index < lexed.size() && lexed.at(index).tokenText != "]") {
                 index++;
             }
+            index++; // moves index after closed brackets
         }
         else if(t.tokenType == Operator || t.tokenType == Assignment || t.tokenType == LogicOperator) {
             Node opNode = Node(t); // new head of the tree/subtree 
