@@ -321,10 +321,43 @@ Value InfixParser::evaluateHelper(Node root) {
     if (t.tokenText == "[") {
         std::vector<Value> arr = std::vector<Value>();
         for (Node n : root.children) {
-            Value val = evaluateHelper(n);
-            arr.push_back(val);
+            if (n.data.tokenType != ArrayIndex) {
+                Value val = evaluateHelper(n);
+                arr.push_back(val);
+            }
         }
-        return Value(arr);
+        Value val(arr);
+        Value* v = &val;
+        /**
+        for (Node n : root.children) { // handles array index
+            if (n.data.tokenType == ArrayIndex) {
+                Value arrIndex = evaluateHelper(n.children.at(0));
+                if (v->type != Value::ARRAY) {
+                    std::string output = "Runtime error: not an array.";
+                    runTimeError(output);
+                    return -123.4567;
+                } 
+                if (arrIndex.type != Value::DOUBLE) {
+                    std::string output = "Runtime error: index is not a number.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                double filler; // used solely as parameter for modf function
+                if (modf(arrIndex.double_value, &filler) != 0) {
+                    std::string output = "Runtime error: index is not an integer.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                if (arrIndex.double_value >= v->arr_value->size()) {
+                    std::string output = "Runtime error: index out of bounds.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                v = &v->arr_value->at(arrIndex.double_value);
+            }
+        }
+        */
+        return *v;
     }
     if(t.tokenType == Number) {// return number value
         return Value(std::stod(t.tokenText));
@@ -338,15 +371,13 @@ Value InfixParser::evaluateHelper(Node root) {
             runTimeError(output);
             return -123.4567;
         }
-        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) { // todo: make this work for multidimensional arrays
             Value arrIndex = evaluateHelper(root.children.at(0).children.at(0));
-            /**
             if (variables.at(t.tokenText).type != Value::ARRAY) {
                 std::string output = "Runtime error: not an array.";
                 runTimeError(output);
                 return -123.4567;
             } 
-            */
             if (arrIndex.type != Value::DOUBLE) {
                 std::string output = "Runtime error: index is not a number.";
                 runTimeError(output);
@@ -416,6 +447,9 @@ void InfixParser::printTreeHelper(Node root) const {
         std::cout << "[";
         for(unsigned int i = 0; i < root.children.size(); i++) {
             Node n = root.children.at(i);
+            if (n.data.tokenType == ArrayIndex) {
+                continue;
+            }
             if(i == 0) {
                 printTreeHelper(n);
             }
@@ -425,6 +459,14 @@ void InfixParser::printTreeHelper(Node root) const {
             }
         }
         std::cout << "]";
+        for(unsigned int i = 0; i < root.children.size(); i++) { // loop again to print array indices if needed
+            Node n = root.children.at(i);
+            if (n.data.tokenType == ArrayIndex) {
+                std::cout << "[";
+                printTreeHelper(root.children.at(i).children.at(0)); // print index
+                std::cout << "]";
+            }
+        }
     }
     else {
         if(root.data.tokenType == Number) {

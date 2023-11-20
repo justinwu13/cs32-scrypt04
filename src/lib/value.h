@@ -40,7 +40,9 @@ struct Value {
         std::shared_ptr<std::vector<Value>> arr_value;
     };
 
-    ~Value() {}
+    ~Value() {
+
+    }
 
     Value(Value const& value) {
         type = value.type;
