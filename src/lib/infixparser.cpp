@@ -146,11 +146,11 @@ void InfixParser::equalText(Value& result, Node& root){
                         std::string output = "Runtime error: index is not an integer.";
                         runTimeError(output);
                     }
-                    if (arrIndex.double_value >= v->arr_value.size() || arrIndex.double_value < 0) {
+                    if (arrIndex.double_value >= v->arr_value->size() || arrIndex.double_value < 0) {
                         std::string output = "Runtime error: index out of bounds.";
                         runTimeError(output);
                     }
-                    v = v->arr_value.at(arrIndex.double_value); // update v to point to the value needed to change
+                    v = &v->arr_value->at(arrIndex.double_value); // update v to point to the value needed to change
                     j++;
                 }
                 *v = result;
@@ -319,9 +319,9 @@ void InfixParser::caretText(Value& result, Node& root, Token& t){
 Value InfixParser::evaluateHelper(Node root) {
     Token t = root.data;
     if (t.tokenText == "[") {
-        std::vector<Value*> arr;
+        std::vector<Value> arr = std::vector<Value>();
         for (Node n : root.children) {
-            Value* val = new Value(evaluateHelper(n));
+            Value val = evaluateHelper(n);
             arr.push_back(val);
         }
         return Value(arr);
@@ -358,12 +358,12 @@ Value InfixParser::evaluateHelper(Node root) {
                 runTimeError(output);
                 return -123.4567;
             }
-            if (arrIndex.double_value >= variables.at(t.tokenText).arr_value.size()) {
+            if (arrIndex.double_value >= variables.at(t.tokenText).arr_value->size()) {
                 std::string output = "Runtime error: index out of bounds.";
                 runTimeError(output);
                 return -123.4567;
             }
-            return *variables.at(t.tokenText).arr_value.at(arrIndex.double_value);
+            return variables.at(t.tokenText).arr_value->at(arrIndex.double_value);
         }
         else {
             return variables.at(t.tokenText); // return variable value
@@ -671,11 +671,19 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
         else if(t2.tokenText == "]") {// end the current subtree when reaching "]"
             return lhs;
         }
-        else if (t2.tokenText == "[") {
+        else if (t2.tokenText == "[") { // array index
             Node arrIndex = Node(Token(t2.lineNumber, t2.columnNumber, t2.tokenText, ArrayIndex));
             index++;
-            arrIndex.children.push_back(fillTreeSubexpression(lexed, index));
-            lhs.children.push_back(arrIndex); // makes first child of the Identifier node an ArrayIndex type
+            Node indExpression = fillTreeSubexpression(lexed, index);
+            arrIndex.children.push_back(indExpression);
+            lhs.children.push_back(arrIndex); // makes first child/children of the Identifier node ArrayIndex type(s)
+            if (lexed.at(index).tokenType == Comma) { // array format in an array index
+                unexpectedTokenError(lexed.at(index));
+            }
+            while (index < lexed.size() && lexed.at(index).tokenText != "]") {
+                index++;
+            }
+            index++; // moves index after closed brackets
         }
         else if(t2.tokenType != Operator && t2.tokenType != LogicOperator) {
             unexpectedTokenError(t2);
@@ -692,7 +700,7 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
         index--;
         opNode.children.push_back(rhs);
         lhs = opNode;
-    }
+    }  
 
     return lhs;
 }
