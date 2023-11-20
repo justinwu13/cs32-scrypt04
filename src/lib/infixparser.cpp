@@ -121,13 +121,20 @@ void InfixParser::equalText(Value& result, Node& root){
             throw 3;
         }
         if(variables.find(n.data.tokenText) == variables.end()) {// create variable data
+            if (!n.children.empty() && n.children.at(0).data.tokenType == ArrayIndex) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+            }
             variables.emplace(n.data.tokenText, result);
         }
         else {// update variable if variable has existing value
             unsigned int j = 0;
             if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
-                std::cout << "hi" << std::endl;
                 Value* v = &variables[n.data.tokenText];
+                if (v->type != Value::ARRAY) {
+                    std::string output = "Runtime error: not an array.";
+                    runTimeError(output);
+                }
                 Value arrIndex = evaluateHelper(n.children.at(j).children.at(0));
                 while (j < n.children.size() && n.children.at(j).data.tokenType == ArrayIndex) { // multidimensional array handling
                     if (arrIndex.type != Value::DOUBLE) {
@@ -139,7 +146,7 @@ void InfixParser::equalText(Value& result, Node& root){
                         std::string output = "Runtime error: index is not an integer.";
                         runTimeError(output);
                     }
-                    if (arrIndex.double_value >= v->arr_value.size()) {
+                    if (arrIndex.double_value >= v->arr_value.size() || arrIndex.double_value < 0) {
                         std::string output = "Runtime error: index out of bounds.";
                         runTimeError(output);
                     }
@@ -333,6 +340,13 @@ Value InfixParser::evaluateHelper(Node root) {
         }
         if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
             Value arrIndex = evaluateHelper(root.children.at(0).children.at(0));
+            /**
+            if (variables.at(t.tokenText).type != Value::ARRAY) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+                return -123.4567;
+            } 
+            */
             if (arrIndex.type != Value::DOUBLE) {
                 std::string output = "Runtime error: index is not a number.";
                 runTimeError(output);
@@ -539,6 +553,7 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
         }
     }
     else if(t1.tokenText == "[") { // array
+        // std::cout << "BUILDING ARRAY" << std::endl;
         lhs = buildArray(lexed, index);
     }
     else {
@@ -568,6 +583,7 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             break;
         }
         else if (t.tokenText == "[") { // array index
+            // std::cout << "ARRAY INDEX" << std::endl;
             Node arrIndex = Node(Token(t.lineNumber, t.columnNumber, t.tokenText, ArrayIndex));
             index++;
             Node indExpression = fillTreeSubexpression(lexed, index);
@@ -576,7 +592,6 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
             if (lexed.at(index).tokenType == Comma) { // array format in an array index
                 unexpectedTokenError(lexed.at(index));
             }
-            std::cout << lexed.at(index).tokenText << std::endl;
             while (index < lexed.size() && lexed.at(index).tokenText != "]") {
                 index++;
             }
