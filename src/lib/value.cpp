@@ -1,27 +1,68 @@
-// value.cpp
+#ifndef VALUE_H
+#define VALUE_H
 
-#include "value.h"
+#include <iostream>
+#include <memory>
+#include <vector>
 
-std::ostream& operator << (std::ostream& stream, const Value& value) {
-    if (value.type == Value::DOUBLE)
-    {
-        stream << value.double_value;
+class Value {
+public:
+    // Enum to represent different types
+    enum Type {
+        DOUBLE,
+        ARRAY,
+        BOOLEAN
+    };
+
+   
+    Value(double val) : type(DOUBLE), double_value(val) {}   // Constructors
+    Value(const std::vector<Value>& arr) : type(ARRAY), arr_value(std::make_shared<std::vector<Value>>(arr)) {}
+    Value(bool val) : type(BOOLEAN), bool_value(val) {}
+
+    // Copy constructor
+    Value(const Value& other) : type(other.type) {
+        if (type == DOUBLE) {
+            double_value = other.double_value;
+        }
+        else if (type == ARRAY) {
+            arr_value = std::make_shared<std::vector<Value>>(*(other.arr_value));
+        }
+        else {
+            bool_value = other.bool_value;
+        }
     }
-    else if (value.type == Value::ARRAY)
-    {
-        stream << '[';
-        for (unsigned int i = 0; i < value.arr_value->size(); i++) {
-            stream << value.arr_value->at(i);
-            if (i < value.arr_value->size() - 1) { // add commas after all elements except the last one
-                stream << ", ";
+
+   
+    ~Value() = default;  // Destructor
+
+    
+    Value& operator=(const Value& other) { // Assignment operator
+        if (this != &other) {
+            type = other.type;
+            if (type == DOUBLE) {
+                double_value = other.double_value;
+            }
+            else if (type == ARRAY) {
+                arr_value = std::make_shared<std::vector<Value>>(*(other.arr_value));
+            }
+            else {
+                bool_value = other.bool_value;
             }
         }
-        stream << ']';
-    }
-    else
-    {
-        stream << value.bool_value;
+        return *this;
     }
 
-    return stream;
-}
+    // Stream insertion operator
+    friend std::ostream& operator<<(std::ostream& stream, const Value& value);
+
+private:
+    Type type;
+
+    union {
+        double double_value;
+        std::shared_ptr<std::vector<Value>> arr_value;
+        bool bool_value;
+    };
+};
+
+#endif
