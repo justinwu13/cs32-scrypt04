@@ -117,7 +117,13 @@ void InfixParser::equalText(Value& result, Node& root){
     for(unsigned int i = 0; i < root.children.size() - 1; i++) {// checks all children except rightmost
         Node& n = root.children.at(i);
         if (n.data.tokenType == Boolean || n.data.tokenType == Number) {
-            std::string output = "Runtime error: not an array.";
+            for (unsigned int j = 0; j < n.children.size(); j++) {
+                if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
+                    std::string output = "Runtime error: not an array.";
+                    runTimeError(output);
+                }
+            }
+            std::string output = "Runtime error: invalid assignee.";
             runTimeError(output);
         }
         if (n.data.tokenText == "[") {
