@@ -120,6 +120,13 @@ void InfixParser::equalText(Value& result, Node& root){
             std::string output = "Runtime error: not an array.";
             runTimeError(output);
         }
+        if (n.data.tokenText == "[") {
+            for (unsigned int j = 0; j < n.children.size(); j++) {
+                if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
+                    return;
+                }
+            }
+        }
         if(n.data.tokenType != Identifier) {// throw error if not variable
             std::string output = "Runtime error: invalid assignee.";
             runTimeError(output);
