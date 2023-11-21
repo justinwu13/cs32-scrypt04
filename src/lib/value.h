@@ -34,14 +34,14 @@ struct Value {
     };
 
     TypeTag type;
-    union {
-        double double_value;
-        bool bool_value;
-        std::shared_ptr<std::vector<Value>> arr_value;
-    };
+    double double_value;
+    bool bool_value;
+    std::shared_ptr<std::vector<Value>> arr_value;
 
     ~Value() {
-
+        if (type == ARRAY) {
+            arr_value.reset();
+        }
     }
 
     Value(Value const& value) {
@@ -57,7 +57,7 @@ struct Value {
             // arr_value = nullptr;
         }
         else {
-            arr_value = value.arr_value;
+            arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
             // bool_value = false;
             // double_value = 0.0;
         }
@@ -76,7 +76,7 @@ struct Value {
             // arr_value = nullptr;
         }
         else {
-            arr_value = value.arr_value;
+            arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
             // bool_value = false;
             // double_value = 0.0;
         }
@@ -93,12 +93,12 @@ struct Value {
 
     Value(bool val) {
         bool_value = val;
-        // double_value = val;
+        // double_value = 0.0;
         // arr_value = nullptr;
         type = BOOL;
     }
 
-    Value(std::vector<Value> arr) {
+    Value(std::vector<Value>& arr) {
         arr_value = std::make_shared<std::vector<Value>>(arr);
         // double_value = 0.0;
         // bool_value = false;

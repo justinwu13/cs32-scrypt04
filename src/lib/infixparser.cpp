@@ -326,9 +326,8 @@ Value InfixParser::evaluateHelper(Node root) {
                 arr.push_back(val);
             }
         }
-        Value val(arr);
+        Value val = Value(arr);
         Value* v = &val;
-        /**
         for (Node n : root.children) { // handles array index
             if (n.data.tokenType == ArrayIndex) {
                 Value arrIndex = evaluateHelper(n.children.at(0));
@@ -356,7 +355,6 @@ Value InfixParser::evaluateHelper(Node root) {
                 v = &v->arr_value->at(arrIndex.double_value);
             }
         }
-        */
         return *v;
     }
     if(t.tokenType == Number) {// return number value
