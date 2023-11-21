@@ -116,9 +116,13 @@ void InfixParser::diffCases(Value& result, Node& root, Token& t){
 void InfixParser::equalText(Value& result, Node& root){
     for(unsigned int i = 0; i < root.children.size() - 1; i++) {// checks all children except rightmost
         Node& n = root.children.at(i);
+        if (n.data.tokenType == Boolean || n.data.tokenType == Number) {
+            std::string output = "Runtime error: not an array.";
+            runTimeError(output);
+        }
         if(n.data.tokenType != Identifier) {// throw error if not variable
-            std::cout << "Runtime error: invalid assignee." << std::endl;
-            throw 3;
+            std::string output = "Runtime error: invalid assignee.";
+            runTimeError(output);
         }
         if(variables.find(n.data.tokenText) == variables.end()) {// create variable data
             if (!n.children.empty() && n.children.at(0).data.tokenType == ArrayIndex) {
@@ -335,7 +339,7 @@ Value InfixParser::evaluateHelper(Node root) {
                     std::string output = "Runtime error: not an array.";
                     runTimeError(output);
                     return -123.4567;
-                } 
+                }
                 if (arrIndex.type != Value::DOUBLE) {
                     std::string output = "Runtime error: index is not a number.";
                     runTimeError(output);
@@ -347,7 +351,7 @@ Value InfixParser::evaluateHelper(Node root) {
                     runTimeError(output);
                     return -123.4567;
                 }
-                if (arrIndex.double_value >= v->arr_value->size()) {
+                if (arrIndex.double_value >= v->arr_value->size() || arrIndex.double_value < 0) {
                     std::string output = "Runtime error: index out of bounds.";
                     runTimeError(output);
                     return -123.4567;
@@ -358,9 +362,19 @@ Value InfixParser::evaluateHelper(Node root) {
         return *v;
     }
     if(t.tokenType == Number) {// return number value
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+            std::string output = "Runtime error: not an array.";
+            runTimeError(output);
+            return -123.4567;
+        }
         return Value(std::stod(t.tokenText));
     }
     if(t.tokenType == Boolean) {// return boolean value
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+            std::string output = "Runtime error: not an array.";
+            runTimeError(output);
+            return -123.4567;
+        }
         return Value(t.tokenText == "true");
     }
     if(t.tokenType == Identifier) {
@@ -387,7 +401,7 @@ Value InfixParser::evaluateHelper(Node root) {
                 runTimeError(output);
                 return -123.4567;
             }
-            if (arrIndex.double_value >= variables.at(t.tokenText).arr_value->size()) {
+            if (arrIndex.double_value >= variables.at(t.tokenText).arr_value->size() || arrIndex.double_value < 0) {
                 std::string output = "Runtime error: index out of bounds.";
                 runTimeError(output);
                 return -123.4567;
