@@ -57,7 +57,7 @@ struct Value {
             // arr_value = nullptr;
         }
         else {
-            arr_value = value.arr_value;
+            arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
             // bool_value = false;
             // double_value = 0.0;
         }
@@ -99,7 +99,7 @@ struct Value {
     }
 
     Value(std::vector<Value> arr) {
-        arr_value = std::make_shared<std::vector<Value>>(arr);
+        arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
         // double_value = 0.0;
         // bool_value = false;
         type = ARRAY;
