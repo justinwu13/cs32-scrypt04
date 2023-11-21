@@ -1,4 +1,4 @@
-FLAGS = -Wall -Werror -Wextra -std=c++17
+FLAGS = -g -Wall -Werror -Wextra -std=c++17
 
 all:	lex parse calc format scrypt
 

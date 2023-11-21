@@ -30,6 +30,7 @@ class InfixParser {
         void fillTreeInfix(std::vector<Token>& lexed);
         Node fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index);
         Node fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence);
+        Node buildArray(std::vector<Token>& lexed, unsigned int& index);
         void printTree(Node root) const;
         void printTreeHelper(Node root) const;
         void printAll();
