@@ -1,12 +1,9 @@
 FLAGS = -g -Wall -Werror -Wextra -std=c++17
 
-all:	lex parse calc format scrypt
+all:	lex calc format scrypt
 
 lex: 	lex.cpp ./lib/lexer.cpp
 	g++ -o lex $(FLAGS) lex.cpp ./lib/lexer.cpp 
-
-parse: 	parse.cpp ./lib/lexer.cpp ./lib/parser.cpp
-	g++ -o parse $(FLAGS) parse.cpp ./lib/lexer.cpp ./lib/parser.cpp 
 
 calc:	calc.cpp ./lib/lexer.cpp ./lib/infixparser.cpp ./lib/function.cpp
 	g++ -o calc $(FLAGS) calc.cpp ./lib/lexer.cpp ./lib/infixparser.cpp ./lib/value.cpp ./lib/function.cpp

@@ -433,12 +433,12 @@ Value InfixParser::evaluateHelper(Node root) {
     }
 
     if(t.tokenType == Funccall) {
-        if(functions.find(t.tokenText) == functions.end()) {
+        if(variables.find(t.tokenText) == variables.end()) {
             std::string output = "Runtime error: unknown identifier " + t.tokenText;
             runTimeError(output);
         }
 
-        Function f(functions.at(t.tokenText));
+        Function f(*variables.at(t.tokenText).func_value);
         if(root.children.size() != f.parameters.size()) {
             std::string output = "Runtime error: incorrect argument count.";
             runTimeError(output);
@@ -979,7 +979,7 @@ Value InfixParser::runProcedureHelper(std::vector<StatementNode>& currBlock, Sta
     }
     else if(s.statementToken.tokenType == Funcdef) {
         Function func(s.statementToken.tokenText, s.indentationLevel, s.children, s.params);
-        functions.emplace(s.statementToken.tokenText, func);
+        variables.emplace(s.statementToken.tokenText, Value(func));
     }
     else { // should be an expression
         evaluate(s.infixExpression);

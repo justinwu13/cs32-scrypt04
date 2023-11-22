@@ -51,6 +51,7 @@ class InfixParser {
         Value runProcedure(std::vector<StatementNode>& currBlock, bool isFunc);
         Value runProcedureHelper(std::vector<StatementNode>& currBlock, StatementNode& s, unsigned int& index, bool isFunc);
         
+        void emplaceVariable(std::string key, Value mapped);
         std::map<std::string, Function> functions;
 
     private:
