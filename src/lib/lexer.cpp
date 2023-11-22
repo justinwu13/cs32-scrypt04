@@ -9,7 +9,7 @@
 
 
 TokenType Lexer::determineType(char c) { //determines the type of token for the specified character
-    if (std::isalpha(c) || c == '_') { // could be either Identifier or Boolean if the string name is "true" or "false"
+    if (std::isalpha(c) || c == '_') { // could be either Identifier or other keyword
         return Identifier;
     }
     switch (c) {

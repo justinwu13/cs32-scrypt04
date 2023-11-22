@@ -56,8 +56,9 @@ class InfixParser {
 
     private:
         int parenCounter;
-        std::map<std::string, Value> variables; // updates all variables even if hitting runtime error
-        std::map<std::string, Value> variablesStorage; // used to reset variables to previous state in case of runtime error
+        // this organization is based on when runtime errors did not cause the program to exit
+        std::map<std::string, Value> variables; // updates all variables even if hitting runtime error (obsolete)
+        std::map<std::string, Value> variablesStorage; // used to reset variables to previous state in case of runtime error (obsolete)
         std::vector<Node> expressionASTs;
 
         double zeroError();
