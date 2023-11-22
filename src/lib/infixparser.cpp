@@ -14,6 +14,8 @@ InfixParser::InfixParser() {
     root = Node();
     parenCounter = 0;
     variables = std::map<std::string, Value>();
+
+    // below is the setup for the utility functions
     std::vector<std::string> lenParams;
     std::vector<std::string> popParams;
     std::vector<std::string> pushParams;
@@ -689,7 +691,6 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
         index++;
     }
     else if(t1.tokenText == "[") { // array
-        // std::cout << "BUILDING ARRAY" << std::endl;
         lhs = buildArray(lexed, index);
     }
     else {
@@ -723,7 +724,6 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
             break;
         }
         else if(t.tokenText == ",") {// end the current subtree when reaching ","
-            // unexpectedTokenError(lexed.at(index));
             break;
         }
         else if(t.tokenText == "]") {// end the current subtree when reaching "]"
@@ -731,7 +731,6 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
             break;
         }
         else if (t.tokenText == "[") { // array index
-            // std::cout << "ARRAY INDEX" << std::endl;
             Node arrIndex = Node(Token(t.lineNumber, t.columnNumber, t.tokenText, ArrayIndex));
             index++;
             Node indExpression = fillTreeSubexpression(lexed, index);
@@ -916,7 +915,6 @@ void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsi
             break;
         }
     }
-    // debug print std::cout << parent.children.size() << std::endl;
 }
 
 

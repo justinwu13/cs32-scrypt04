@@ -275,8 +275,6 @@ void Lexer::printTokens() const {
     for (unsigned int columnNumber = 0; columnNumber < tokens.size(); columnNumber++) {
         Token t = tokens.at(columnNumber);
 
-        // possible improvement: rather than using set width, use log to figure out 
-        // how much width is needed when line/column numbers get large
         std::cout << std::setw(4) << std::right << t.lineNumber << "  " << std::setw(3) << 
             t.columnNumber << "  " << std::left << t.tokenText << std::endl;
     }
