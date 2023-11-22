@@ -12,6 +12,29 @@ Value::~Value() {
     }
 }
 
+Value::Value() {
+    type = NULLVALUE;
+}
+Value::Value(double val) {
+    double_value = val;
+    type = DOUBLE;
+}
+
+Value::Value(bool val) {
+    bool_value = val;
+    type = BOOL;
+}
+
+Value::Value(std::vector<Value>& arr) {
+    arr_value = std::make_shared<std::vector<Value>>(arr);
+    type = ARRAY;
+}
+
+Value::Value(Function& func) {
+    func_value = std::make_shared<Function>(func);
+    type = FUNC;
+}
+
 Value::Value(Value const& value) {
     type = value.type;
     if (value.type == BOOL) {

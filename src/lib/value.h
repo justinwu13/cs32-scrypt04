@@ -25,35 +25,15 @@ struct Value {
 
     ~Value();
 
-    Value() {
-        type = NULLVALUE;
-    }
+    Value();
+    Value(double val);
+    Value(bool val);
+    Value(std::vector<Value>& arr);
+    Value(Function& func);
 
     Value(Value const& value);
-
     Value& operator= (const Value& value);
-
     bool operator== (const Value& value) const;
-
-    Value(double val) {
-        double_value = val;
-        type = DOUBLE;
-    }
-
-    Value(bool val) {
-        bool_value = val;
-        type = BOOL;
-    }
-
-    Value(std::vector<Value>& arr) {
-        arr_value = std::make_shared<std::vector<Value>>(arr);
-        type = ARRAY;
-    }
-
-    Value(Function& func) {
-        func_value = std::make_shared<Function>(func);
-        type = FUNC;
-    }
 };
 
 
