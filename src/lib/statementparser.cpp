@@ -260,7 +260,7 @@ void StatementParser::fillFunc(StatementNode& s, unsigned int& index, int indent
             break;
         }
         Token currToken = statements.at(index).statementToken;
-        if(currToken.tokenType == Identifier) {
+        if(currToken.tokenType == Identifier && statements.at(index).infixExpression.data.tokenText == "") {
             s.params.push_back(currToken.tokenText);
         }
         else {
