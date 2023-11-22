@@ -52,7 +52,7 @@ Value::Value(Value const& value) {
     else { // NULLVALUE
         // do nothing
     }
-    }
+}
 
 Value& Value::operator= (const Value& value) {
     type = value.type;

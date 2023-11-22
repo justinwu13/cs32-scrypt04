@@ -323,7 +323,7 @@ void InfixParser::caretText(Value& result, Node& root, Token& t){
 Value InfixParser::evaluateHelper(Node root) {
     Token t = root.data;
 
-    if(t.tokenType == Nullval || t.tokenType == Undefined) {
+    if(t.tokenType == Nullval || t.tokenType == Undefined) { // returns null value
         return Value();
     }
 
@@ -423,17 +423,17 @@ Value InfixParser::evaluateHelper(Node root) {
     }
 
     if(t.tokenType == Funccall) {
-        if(variables.find(t.tokenText) == variables.end()) {
+        if(variables.find(t.tokenText) == variables.end()) { // error if function name not defined
             std::string output = "Runtime error: unknown identifier " + t.tokenText;
             runTimeError(output);
         }
 
-        if(variables.at(t.tokenText).type != Value::FUNC) {
+        if(variables.at(t.tokenText).type != Value::FUNC) { // error if variable type is not function
             std::string output = "Runtime error: not a function.";
             runTimeError(output);
         }
         Function f(*variables.at(t.tokenText).func_value);
-        if(root.children.size() != f.parameters.size()) {
+        if(root.children.size() != f.parameters.size()) { // self explanatory
             std::string output = "Runtime error: incorrect argument count.";
             runTimeError(output);
         }
@@ -463,7 +463,7 @@ Value InfixParser::evaluateHelper(Node root) {
                 std::string output = "Runtime error: not an array.";
                 runTimeError(output);
             }
-            if (arr.arr_value->empty()) {
+            if (arr.arr_value->empty()) { // error if trying to pop an empty array
                 std::string output = "Runtime error: underflow.";
                 runTimeError(output);
             }
@@ -484,7 +484,7 @@ Value InfixParser::evaluateHelper(Node root) {
         return runProcedure(f.procedure, true);
     }
     
-    if(root.children.size() == 0) {
+    if(root.children.size() == 0) { // case should not happen
         return 0.0;
     }
 
@@ -552,15 +552,15 @@ void InfixParser::printTreeHelper(Node root) const {
         }
     }
     else {
-        if(root.data.tokenType == Number) {
+        if(root.data.tokenType == Number) { // use stod for correct precision
             std::cout << std::stod(root.data.tokenText);
         }
         else if(root.data.tokenType == Identifier
             ||  root.data.tokenType == Boolean
-            ||  root.data.tokenType == Nullval) {
+            ||  root.data.tokenType == Nullval) { // prints variable or keyword name
             std::cout << root.data.tokenText;
         }
-        else if(root.data.tokenType == Funccall) {
+        else if(root.data.tokenType == Funccall) { // prints function name, with parens and params with commas
             std::cout << root.data.tokenText << "(";
             for(unsigned int i = 0; i < root.children.size(); i++) {
                 Node n = root.children.at(i);
@@ -708,7 +708,8 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
                 unexpectedTokenError(t);
             }
             lhs.data.tokenType = Funccall;
-            if(t1.tokenType != Identifier) {
+            if(t1.tokenType != Identifier) { 
+                // handles cases like 7(9), makes evaluate throw the error since it should be runtime error
                 lhs.data.tokenType = Invalidcall;
             }
             fillFunctionCall(lhs, lexed, ++index);
@@ -782,7 +783,7 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
 
 Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence) {
     Node lhs;
-    Token t = lexed.at(index); // either a number, variable, or subexpression
+    Token t = lexed.at(index); // either a value or subexpression
     if(t.tokenType == Number || t.tokenType == Identifier || t.tokenType == Boolean || t.tokenType == Nullval) {
         lhs = Node(t);
     }
@@ -860,7 +861,7 @@ Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& i
 }
 
 void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsigned int& index) {
-    if(lexed.at(index).tokenText == ")") {
+    if(lexed.at(index).tokenText == ")") { // case for no params
         index++;
         return;
     }
@@ -891,7 +892,7 @@ void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsi
             else if(t.tokenText == "]") {
                 currBracketCounter--;
             }
-            else if(t.tokenType == Comma) {
+            else if(t.tokenType == Comma) { // if not nested in () or [], comma marks end of parameter
                 if(currParenCounter == 0 && currBracketCounter == 0) {    
                     Token end = t;
                     end.tokenType = End;
@@ -907,11 +908,11 @@ void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsi
             index++;
         }
 
-        Token end = lexed.at(index++);
+        Token end = lexed.at(index++); 
         unsigned int subIndex = 0;
         parent.children.push_back(fillTreeSubexpression(subexpression, subIndex));
 
-        if(end.tokenText == ")") {
+        if(end.tokenText == ")") { // end function call when top-level ")" reached
             break;
         }
     }

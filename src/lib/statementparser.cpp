@@ -34,7 +34,7 @@ void StatementParser::printProcedureHelper(StatementNode& statement) {
         std::cout << "def ";
     }
     std::cout << t.tokenText;
-    if(t.tokenType == Funcdef) {
+    if(t.tokenType == Funcdef) { // prints the parameter names separated by comma
         std::cout << "(";
         for(unsigned int i = 0; i < statement.params.size(); i++) {
             std::cout << statement.params.at(i);
@@ -85,14 +85,14 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
         StatementNode statement;
         statement.statementToken = first;
         if(first.tokenText == "return" || first.tokenText == "print") {
-            if(first.tokenText == "return" && lexed.at(index + 1).tokenText == ";") {
+            if(first.tokenText == "return" && lexed.at(index + 1).tokenText == ";") { // deals with "return;" case
                 index++;
             }
             else {
                 statement.infixExpression = readExpression(lexed, ++index, ";");
             }
         }
-        else if(first.tokenType == Funcdef) {
+        else if(first.tokenType == Funcdef) { // expect "def" followed by name, then "(", then params with commas, then ")"
             statements.push_back(statement);
             StatementNode funcName = StatementNode(lexed.at(++index));
             statements.push_back(funcName);
@@ -122,7 +122,7 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
             else {
                 index++;
             }
-            if(lexed.at(++index).tokenText != "{") {
+            if(lexed.at(++index).tokenText != "{") { // "{" expected after parameters 
                 par.unexpectedTokenError(lexed.at(index));
             }
             index++;
@@ -131,7 +131,7 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
         else if(first.tokenType == Statement) {
             if(first.tokenText == "else") {
                 Token second = lexed.at(index + 1);
-                if(second.tokenText == "if") {
+                if(second.tokenText == "if") { // else with if directly following gets changed to elif, helps fillProcedure
                     statement.statementToken.tokenText = "elif";
                 }
                 else if(second.tokenText != "{") {
@@ -146,7 +146,7 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
             }
         }
         else if(first.tokenText == "}") {
-            
+            // do nothing
         }
         else if(first.tokenType == End) {
             break;
@@ -160,12 +160,13 @@ void StatementParser::readStatements(std::vector<Token>& lexed) {
     }
 }
 
+// reads a subexpression until delimiter is hit, because InfixParser will throw error on ";" and "{"
 Node StatementParser::readExpression(std::vector<Token>& lexed, unsigned int& index, std::string delimiter) {    
     std::vector<Token> subexpression;
     while(index < lexed.size()) {
         Token t = lexed.at(index);
-        if(t.tokenText == delimiter) {
-            Token end = t;
+        if(t.tokenText == delimiter) { // stops adding to subexpression when delimiter is hit
+            Token end = t; 
             t.tokenType = End;
             subexpression.push_back(t);
             break;
@@ -180,7 +181,7 @@ Node StatementParser::readExpression(std::vector<Token>& lexed, unsigned int& in
     }
 
     unsigned int subIndex = 0;
-    return par.fillTreeSubexpression(subexpression, subIndex);
+    return par.fillTreeSubexpression(subexpression, subIndex); // InfixParser reads everything until delimiter
 }
 
 // organizes statements into blocks
@@ -213,7 +214,7 @@ void StatementParser::fillSubProcedure(std::vector<StatementNode>& currBlock, un
             braceCounter--;
             return;
         }
-        else if(s.statementToken.tokenType == Funcdef) {
+        else if(s.statementToken.tokenType == Funcdef) { // fills a function definition
             fillFunc(s, ++index, indentation);
             currBlock.push_back(s);
         }
@@ -260,7 +261,7 @@ void StatementParser::fillFunc(StatementNode& s, unsigned int& index, int indent
             break;
         }
         Token currToken = statements.at(index).statementToken;
-        if(currToken.tokenType == Identifier && statements.at(index).infixExpression.data.tokenText == "") {
+        if(currToken.tokenType == Identifier && statements.at(index).infixExpression.data.tokenText == "") { // adds params to func token
             s.params.push_back(currToken.tokenText);
         }
         else {
@@ -268,7 +269,7 @@ void StatementParser::fillFunc(StatementNode& s, unsigned int& index, int indent
         }
         index++;
     }
-    fillSubProcedure(s.children, index, indentation + 1);
+    fillSubProcedure(s.children, index, indentation + 1); // fills functions with statements until "}" is reached
 }
 
 std::vector<StatementNode> StatementParser::getProcedure() {

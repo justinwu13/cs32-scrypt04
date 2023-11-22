@@ -14,7 +14,7 @@ class StatementParser {
         void readStatements(std::vector<Token>& lexed);
         Node readExpression(std::vector<Token>& lexed, unsigned int& index, std::string delimiter);
         void fillProcedure();
-        void fillSubProcedure(std::vector<StatementNode>& currBlock, unsigned int& index, int indentation); // indentation should prob be unsigned but idk for now
+        void fillSubProcedure(std::vector<StatementNode>& currBlock, unsigned int& index, int indentation); 
         void fillElif(std::vector<StatementNode>& currBlock, unsigned int& index, int indentation);
         void fillFunc(StatementNode& s, unsigned int& index, int indentation);
         void printProcedure();
