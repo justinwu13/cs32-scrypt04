@@ -1,7 +1,6 @@
 // token.h
 #pragma once
 #include <string>
-#include "value.h"
 
 enum TokenType {
     Undefined = -1,

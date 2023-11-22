@@ -13,4 +13,3 @@ format:	format.cpp ./lib/lexer.cpp ./lib/infixparser.cpp ./lib/statementparser.c
 
 scrypt:	scrypt.cpp ./lib/lexer.cpp ./lib/infixparser.cpp ./lib/statementparser.cpp ./lib/function.cpp
 	g++ -o scrypt $(FLAGS) scrypt.cpp ./lib/lexer.cpp ./lib/infixparser.cpp ./lib/value.cpp ./lib/statementparser.cpp ./lib/function.cpp
-
