@@ -9,7 +9,7 @@
 
 
 TokenType Lexer::determineType(char c) { //determines the type of token for the specified character
-    if (std::isalpha(c) || c == '_') { // could be either Identifier or Boolean if the string name is "true" or "false"
+    if (std::isalpha(c) || c == '_') { // could be either Identifier or other keyword
         return Identifier;
     }
     switch (c) {
@@ -179,8 +179,14 @@ void Lexer::typeIdentifier(int lineNumber, unsigned int& columnNumber, std::stri
     if (varName == "true" || varName == "false") { 
         tokens.push_back(Token(lineNumber, originalIndex, varName, Boolean));
     }
-    else if (varName == "print" || varName == "if" || varName == "while" || varName == "else") {
+    else if (varName == "print" || varName == "if" || varName == "while" || varName == "else" || varName == "return") {
         tokens.push_back(Token(lineNumber, originalIndex, varName, Statement));
+    }
+    else if (varName == "def") {
+        tokens.push_back(Token(lineNumber, originalIndex, varName, Funcdef));
+    }
+    else if (varName == "null") {
+        tokens.push_back(Token(lineNumber, originalIndex, varName, Nullval));
     }
     else {
         tokens.push_back(Token(lineNumber, originalIndex, varName, Identifier));
@@ -269,8 +275,6 @@ void Lexer::printTokens() const {
     for (unsigned int columnNumber = 0; columnNumber < tokens.size(); columnNumber++) {
         Token t = tokens.at(columnNumber);
 
-        // possible improvement: rather than using set width, use log to figure out 
-        // how much width is needed when line/column numbers get large
         std::cout << std::setw(4) << std::right << t.lineNumber << "  " << std::setw(3) << 
             t.columnNumber << "  " << std::left << t.tokenText << std::endl;
     }

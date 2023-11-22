@@ -6,30 +6,18 @@
 #include <map>
 #include "token.h"
 #include "value.h"
+#include "node.h"
+#include "function.h"
 
 class InfixParser {
     public:
-        struct Node{
-            Token data;
-            std::vector<Node> children;
-
-            Node() {
-                data = Token();
-                std::vector<Node> children = std::vector<Node>();
-            }
-
-            Node(Token data){
-                this->data = data;
-                children = std::vector<Node>();
-            }
-        };
-
         Node root;
 
         InfixParser();
         void fillTreeInfix(std::vector<Token>& lexed);
         Node fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index);
         Node fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence);
+        void fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsigned int& index);
         Node buildArray(std::vector<Token>& lexed, unsigned int& index);
         void printTree(Node root) const;
         void printTreeHelper(Node root) const;
@@ -59,11 +47,18 @@ class InfixParser {
 
         void unexpectedTokenError(Token t);
         void runTimeError(std::string output);
+
+        Value runProcedure(std::vector<StatementNode>& currBlock, bool isFunc);
+        Value runProcedureHelper(std::vector<StatementNode>& currBlock, StatementNode& s, unsigned int& index, bool isFunc);
         
+        void emplaceVariable(std::string key, Value mapped);
+        std::map<std::string, Function> functions;
+
     private:
         int parenCounter;
-        std::map<std::string, Value> variables; // updates all variables even if hitting runtime error
-        std::map<std::string, Value> variablesStorage; // used to reset variables to previous state in case of runtime error
+        // this organization is based on when runtime errors did not cause the program to exit
+        std::map<std::string, Value> variables; // updates all variables even if hitting runtime error (obsolete)
+        std::map<std::string, Value> variablesStorage; // used to reset variables to previous state in case of runtime error (obsolete)
         std::vector<Node> expressionASTs;
 
         double zeroError();

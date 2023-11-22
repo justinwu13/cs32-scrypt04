@@ -9,6 +9,7 @@
 #include "value.h"
 #include "infixparser.h"
 #include "statementparser.h"
+#include "function.h"
 
 StatementParser::StatementParser() {
     braceCounter = 0;
@@ -28,18 +29,32 @@ void StatementParser::printProcedureHelper(StatementNode& statement) {
         std::cout << "    ";
     }    
 
-    std::cout << statement.statementToken.tokenText;
+    Token t = statement.statementToken;
+    if(t.tokenType == Funcdef) {
+        std::cout << "def ";
+    }
+    std::cout << t.tokenText;
+    if(t.tokenType == Funcdef) { // prints the parameter names separated by comma
+        std::cout << "(";
+        for(unsigned int i = 0; i < statement.params.size(); i++) {
+            std::cout << statement.params.at(i);
+            if(i != statement.params.size() - 1) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << ")";
+    }
     // whitespace, otherwise would end up with output like "printsteps" or "ifx > 1 {"
-    if(statement.statementToken.tokenType == Statement && statement.statementToken.tokenText != "else") {
+    if(t.tokenType == Statement && t.tokenText != "else" && !(t.tokenText == "return" && statement.infixExpression.data.tokenType == Undefined)) {
         std::cout << " ";
     }
     par.printTree(statement.infixExpression);
-    // all statements except for print have their own set of curly brackets
-    if(statement.statementToken.tokenType == Statement && statement.statementToken.tokenText != "print") {
+    // all statements except for print and return have their own set of curly brackets
+    if((t.tokenType == Statement && t.tokenText != "print" && t.tokenText != "return") || t.tokenType == Funcdef) {
         std::cout << " {";
     }
     // all bare expressions, print statements, and return statements have semicolon 
-    if(statement.statementToken.tokenType != Statement || statement.statementToken.tokenText == "print") {
+    if((t.tokenType != Statement && t.tokenType != Funcdef) || t.tokenText == "print" || t.tokenText == "return") {
         std::cout << ";";
     }
     std::cout << std::endl;
@@ -49,7 +64,7 @@ void StatementParser::printProcedureHelper(StatementNode& statement) {
         printProcedureHelper(s);
     }
 
-    if(statement.statementToken.tokenType == Statement && statement.statementToken.tokenText != "print") {
+    if((t.tokenType == Statement && t.tokenText != "print" && t.tokenText != "return") || t.tokenType == Funcdef) {
         for(int i = 0; i < statement.indentationLevel; i++) {
             std::cout << "    ";
         } 
@@ -59,74 +74,114 @@ void StatementParser::printProcedureHelper(StatementNode& statement) {
 
 // only reads/stores input, does not organize into blocks yet 
 void StatementParser::readStatements(std::vector<Token>& lexed) {
-    par.clearAST(); 
-
     if(lexed.size() <= 1) {
         return;
     }
 
-    Token first = lexed.at(0);
-    StatementNode statement;
-    if(first.tokenType == Statement) {
+    unsigned int index = 0;
+    while(index < lexed.size()) {
+        par.clearAST();
+        Token first = lexed.at(index);
+        StatementNode statement;
         statement.statementToken = first;
-
-        if(first.tokenText == "else") {
-            statements.push_back(statement);
-            Token second = lexed.at(1);
-
-            if(second.tokenText == "{") {
-                return;
-            }
-            else if(second.tokenText == "if") {
-                statements.at(statements.size() - 1).statementToken.tokenText = "elif"; // changes else to elif if "if" follows
-                Token last = lexed.at(lexed.size() - 2);
-                if(last.tokenText != "{") { // throw error if doesn't end line with "{"
-                    par.unexpectedTokenError(last);
-                }
-                statement.statementToken = second;
-                // remove everything that isn't part of an infix expression so InfixParser can read it
-                lexed.erase(lexed.begin());
-                lexed.erase(lexed.begin());
-                lexed.erase(lexed.end() - 2);
+        if(first.tokenText == "return" || first.tokenText == "print") {
+            if(first.tokenText == "return" && lexed.at(index + 1).tokenText == ";") { // deals with "return;" case
+                index++;
             }
             else {
-                par.unexpectedTokenError(second);
+                statement.infixExpression = readExpression(lexed, ++index, ";");
             }
         }
-        else if(first.tokenText == "print") {
-            if(lexed.at(lexed.size() - 2).tokenText != ";") { // should have ; at end, else throw error
-                par.unexpectedTokenError(lexed.at(lexed.size() - 2));
+        else if(first.tokenType == Funcdef) { // expect "def" followed by name, then "(", then params with commas, then ")"
+            statements.push_back(statement);
+            StatementNode funcName = StatementNode(lexed.at(++index));
+            statements.push_back(funcName);
+            if(funcName.statementToken.tokenType != Identifier) {
+                par.unexpectedTokenError(funcName.statementToken);
             }
-            lexed.erase(lexed.begin());
-            lexed.erase(lexed.end() - 2);
-        }
-        else {// should be if or while
-            if(lexed.at(lexed.size() - 2).tokenText != "{") { // throw error if doesn't end line with "{"
-                par.unexpectedTokenError(lexed.at(lexed.size() - 2));
+            if(lexed.at(++index).tokenText != "(") {
+                par.unexpectedTokenError(lexed.at(index));
             }
-            // remove everything that isn't part of an infix expression so InfixParser can read it
-            lexed.erase(lexed.begin());
-            lexed.erase(lexed.end() - 2);
+
+            if(lexed.at(index + 1).tokenText != ")") {
+                while(true) { // break or error should always be hit eventually
+                    Token varToken = lexed.at(++index);
+                    if(varToken.tokenType != Identifier) {
+                        par.unexpectedTokenError(varToken);
+                    }
+                    statements.push_back(StatementNode(varToken));
+                    Token separator = lexed.at(++index);
+                    if(separator.tokenText == ")") {
+                        break;
+                    }
+                    else if(separator.tokenType != Comma) {
+                        par.unexpectedTokenError(separator);
+                    }
+                }
+            }
+            else {
+                index++;
+            }
+            if(lexed.at(++index).tokenText != "{") { // "{" expected after parameters 
+                par.unexpectedTokenError(lexed.at(index));
+            }
+            index++;
+            continue;
         }
+        else if(first.tokenType == Statement) {
+            if(first.tokenText == "else") {
+                Token second = lexed.at(index + 1);
+                if(second.tokenText == "if") { // else with if directly following gets changed to elif, helps fillProcedure
+                    statement.statementToken.tokenText = "elif";
+                }
+                else if(second.tokenText != "{") {
+                    par.unexpectedTokenError(second);
+                }
+                else {
+                    index++;
+                }
+            }
+            else { //if or while
+                statement.infixExpression = readExpression(lexed, ++index, "{");
+            }
+        }
+        else if(first.tokenText == "}") {
+            // do nothing
+        }
+        else if(first.tokenType == End) {
+            break;
+        }
+        else { // bare expression
+            statement.statementToken.tokenText = "";
+            statement.infixExpression = readExpression(lexed, index, ";");
+        }
+        index++;
+        statements.push_back(statement);
     }
-    else if(first.tokenText == "}") {
-        if(lexed.size() != 2) {
-            par.unexpectedTokenError(lexed.at(1));
+}
+
+// reads a subexpression until delimiter is hit, because InfixParser will throw error on ";" and "{"
+Node StatementParser::readExpression(std::vector<Token>& lexed, unsigned int& index, std::string delimiter) {    
+    std::vector<Token> subexpression;
+    while(index < lexed.size()) {
+        Token t = lexed.at(index);
+        if(t.tokenText == delimiter) { // stops adding to subexpression when delimiter is hit
+            Token end = t; 
+            t.tokenType = End;
+            subexpression.push_back(t);
+            break;
+        }
+        else if(t.tokenType == End) { // will throw error in fillTreeSubExpression
+            subexpression.push_back(t);
+            break;
         }
 
-        statement.statementToken = first;
-        statements.push_back(statement);
-        return;
+        subexpression.push_back(t);
+        index++;
     }
-    else { // bare expression
-        if(lexed.at(lexed.size() - 2).tokenText != ";") { // should have ; at end, else throw error
-            par.unexpectedTokenError(lexed.at(lexed.size() - 2));
-        }
-        lexed.erase(lexed.end() - 2); // remove semicolon
-    }
-    par.fillTreeInfix(lexed); // InfixParser reads the remaining tokens
-    statement.infixExpression = par.root;
-    statements.push_back(statement);
+
+    unsigned int subIndex = 0;
+    return par.fillTreeSubexpression(subexpression, subIndex); // InfixParser reads everything until delimiter
 }
 
 // organizes statements into blocks
@@ -140,7 +195,7 @@ void StatementParser::fillSubProcedure(std::vector<StatementNode>& currBlock, un
         StatementNode s = statements.at(index);
         s.indentationLevel = indentation;
 
-        if(s.statementToken.tokenType == Statement && s.statementToken.tokenText != "print") {
+        if(s.statementToken.tokenType == Statement && s.statementToken.tokenText != "print" && s.statementToken.tokenText != "return") {
             if(s.statementToken.tokenText == "elif") {
                 s.statementToken.tokenText = "else"; // changes elif back to else for proper output
                 fillElif(s.children, ++index, indentation + 1); // special call for else if
@@ -158,6 +213,10 @@ void StatementParser::fillSubProcedure(std::vector<StatementNode>& currBlock, un
             s.indentationLevel--;
             braceCounter--;
             return;
+        }
+        else if(s.statementToken.tokenType == Funcdef) { // fills a function definition
+            fillFunc(s, ++index, indentation);
+            currBlock.push_back(s);
         }
         else {
             currBlock.push_back(s);
@@ -192,61 +251,27 @@ void StatementParser::fillElif(std::vector<StatementNode>& currBlock, unsigned i
     }
 }
 
-void StatementParser::runProcedure() {
-    runProcedure(procedure); 
+// helper function to define functions
+void StatementParser::fillFunc(StatementNode& s, unsigned int& index, int indentation) {
+    std::string funcName = statements.at(index).statementToken.tokenText;
+    s.statementToken.tokenText = funcName;
+    index++;
+    while(true) { // break or error should be hit eventually
+        if(index >= statements.size()) { // should not happen
+            break;
+        }
+        Token currToken = statements.at(index).statementToken;
+        if(currToken.tokenType == Identifier && statements.at(index).infixExpression.data.tokenText == "") { // adds params to func token
+            s.params.push_back(currToken.tokenText);
+        }
+        else {
+            break;
+        }
+        index++;
+    }
+    fillSubProcedure(s.children, index, indentation + 1); // fills functions with statements until "}" is reached
 }
 
-// runs the statements in the specified block
-void StatementParser::runProcedure(std::vector<StatementNode>& currBlock) {
-    for(unsigned int i = 0; i < currBlock.size(); i++) { // runs every statement in the block
-        StatementNode& s = currBlock.at(i);
-        runProcedureHelper(currBlock, s, i); 
-    }
-}
-
-void StatementParser::runProcedureHelper(std::vector<StatementNode>& currBlock, StatementNode& s, unsigned int& index) {
-    if(s.statementToken.tokenType == Statement) {
-        std::string instruction = s.statementToken.tokenText;
-
-        if(instruction == "print") { // simple case
-            std::cout << par.evaluate(s.infixExpression) << std::endl;
-        }
-        else if(instruction == "if") {
-            Value condition = par.evaluate(s.infixExpression);
-            if(condition.type != Value::BOOL) { // throw error if condition does not evaluate to bool
-                std::cout << "Runtime error: condition is not a bool." << std::endl;
-                throw 3;
-            }
-
-            if(condition.bool_value == true) { // if block runs if condition is true
-                if(index + 1 < currBlock.size() && currBlock.at(index + 1).statementToken.tokenText == "else") {
-                    index++; // skips following else block if condition is true
-                }
-                runProcedure(s.children); // run the statements in the block
-            }
-        }
-        else if(instruction == "while") {
-            while(true) { // keep running the block
-                Value condition = par.evaluate(s.infixExpression);
-                if(condition.type != Value::BOOL) { // throw error if condition does not evaluate to bool
-                    std::cout << "Runtime error: condition is not a bool." << std::endl;
-                    throw 3;
-                }
-
-                if(condition.bool_value == true) {
-                    runProcedure(s.children); // run the statements in the block
-                }
-                else {
-                    break; // stop running the block if the condition is false
-                }
-            }
-            
-        }
-        else { // should be "else", this case will only run if the previous "if" did not run
-            runProcedure(s.children); // run the statements in the block
-        }
-    }
-    else { // should be an expression
-        par.evaluate(s.infixExpression);
-    }
+std::vector<StatementNode> StatementParser::getProcedure() {
+    return procedure;
 }
