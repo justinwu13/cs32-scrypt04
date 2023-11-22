@@ -185,6 +185,9 @@ void Lexer::typeIdentifier(int lineNumber, unsigned int& columnNumber, std::stri
     else if (varName == "def") {
         tokens.push_back(Token(lineNumber, originalIndex, varName, Funcdef));
     }
+    else if (varName == "null") {
+        tokens.push_back(Token(lineNumber, originalIndex, varName, Nullval));
+    }
     else {
         tokens.push_back(Token(lineNumber, originalIndex, varName, Identifier));
     }

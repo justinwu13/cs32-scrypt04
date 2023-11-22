@@ -13,6 +13,7 @@ enum TokenType {
     LogicOperator,
     Boolean,
     Statement,
+    Nullval,
     CurlyBrac,
     SquareBrac,
     Comma,

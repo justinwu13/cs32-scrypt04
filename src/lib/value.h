@@ -29,6 +29,7 @@ struct Value : public std::variant<
 
 struct Value {
     enum TypeTag {
+        NULLVALUE = -1,
         DOUBLE,
         BOOL,
         ARRAY,
@@ -50,6 +51,10 @@ struct Value {
         }
     }
 
+    Value() {
+        type = NULLVALUE;
+    }
+
     Value(Value const& value) {
         type = value.type;
         if (value.type == BOOL) {
@@ -67,7 +72,7 @@ struct Value {
             // bool_value = false;
             // arr_value = nullptr;
         }
-        else {
+        else if (value.type == ARRAY) {
             arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
             // bool_value = false;
             // double_value = 0.0;
@@ -91,16 +96,19 @@ struct Value {
             // bool_value = false;
             // arr_value = nullptr;
         }
-        else {
+        else if (value.type == ARRAY) {
             arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
             // bool_value = false;
             // double_value = 0.0;
+        }
+        else { // NULLVALUE
+            // do nothing
         }
 
         return *this;
     }
 
-    Value(double val = 0.0) {
+    Value(double val) {
         double_value = val;
         // bool_value = false;
         // arr_value = nullptr;

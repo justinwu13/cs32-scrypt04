@@ -337,6 +337,10 @@ void InfixParser::caretText(Value& result, Node& root, Token& t){
 Value InfixParser::evaluateHelper(Node root) {
     Token t = root.data;
 
+    if(t.tokenType == Nullval || t.tokenType == Undefined) {
+        return Value();
+    }
+
     if(t.tokenType == Invalidcall) {
         runTimeError("Runtime error: not a function.");
     }
@@ -640,7 +644,7 @@ void InfixParser::fillTreeInfix(std::vector<Token>& lexed) {
 Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index) {
     Node lhs = Node(Token());
     Token t1 = lexed.at(index);
-    if(t1.tokenType == Number || t1.tokenType == Identifier || t1.tokenType == Boolean) {
+    if(t1.tokenType == Number || t1.tokenType == Identifier || t1.tokenType == Boolean || t1.tokenType == Nullval) {
         lhs = Node(t1);
         Token t2 = lexed.at(++index);
         if(t2.tokenType == End) {
@@ -684,7 +688,7 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
             break;
         }
         else if(t.tokenText == "(") { // function call
-            if(t1.tokenType != Number && t1.tokenType != Identifier) {
+            if(t1.tokenType != Number && t1.tokenType != Identifier && t1.tokenType != Nullval) {
                 unexpectedTokenError(t);
             }
             lhs.data.tokenType = Funccall;
@@ -765,7 +769,7 @@ Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int&
 Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence) {
     Node lhs;
     Token t = lexed.at(index); // either a number, variable, or subexpression
-    if(t.tokenType == Number || t.tokenType == Identifier || t.tokenType == Boolean) {
+    if(t.tokenType == Number || t.tokenType == Identifier || t.tokenType == Boolean || t.tokenType == Nullval) {
         lhs = Node(t);
     }
     else if(t.tokenText == "(") {// treat everything inside parethesis as its own subtree/subexpression
@@ -787,7 +791,7 @@ Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& i
             return lhs;
         }
         else if(t2.tokenText == "(") {
-            if(t.tokenType != Number && t.tokenType != Identifier) {
+            if(t.tokenType != Number && t.tokenType != Identifier && t.tokenType != Nullval) {
                 unexpectedTokenError(t2);
             }
             lhs.data.tokenType = Funccall;
@@ -923,15 +927,15 @@ Value InfixParser::runProcedure(std::vector<StatementNode>& currBlock, bool isFu
         StatementNode& s = currBlock.at(i);
         Value v = runProcedureHelper(currBlock, s, i, isFunc); 
 
-        if(v.double_value != -0.888) {
+        if(v.type != Value::NULLVALUE) {
             return v;
         }
     }
-    return Value(-0.888);
+    return Value();
 }
 
 Value InfixParser::runProcedureHelper(std::vector<StatementNode>& currBlock, StatementNode& s, unsigned int& index, bool isFunc) {
-    Value result(-0.888);
+    Value result;
     if(s.statementToken.tokenType == Statement) {
         std::string instruction = s.statementToken.tokenText;
 
@@ -970,7 +974,12 @@ Value InfixParser::runProcedureHelper(std::vector<StatementNode>& currBlock, Sta
             
         }
         else if(s.statementToken.tokenText == "return") {
-            result = evaluate(s.infixExpression);
+            if(s.infixExpression.data.tokenType != Undefined) {
+                result = evaluate(s.infixExpression);
+            }
+            else {
+                result = Value();
+            }
             if(!isFunc) {
                 std::string output = "Runtime error: unexpected return.";
                 runTimeError(output);
@@ -988,8 +997,8 @@ Value InfixParser::runProcedureHelper(std::vector<StatementNode>& currBlock, Sta
     else { // should be an expression
         evaluate(s.infixExpression);
     }
-    if(result.double_value != -0.888) {
+    if(result.type != Value::NULLVALUE) {
         return result;
     }
-    return Value(-0.888);
+    return Value();
 }

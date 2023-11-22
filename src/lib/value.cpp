@@ -19,8 +19,11 @@ std::ostream& operator << (std::ostream& stream, const Value& value) {
         }
         stream << ']';
     }
-    else {
+    else if (value.type == Value::BOOL) {
         stream << value.bool_value;
+    }
+    else {
+        stream << "null";
     }
 
     return stream;
