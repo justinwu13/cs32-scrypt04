@@ -869,10 +869,14 @@ void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsi
     while(true) { // should eventually break or throw error so this is fine
         std::vector<Token> subexpression;
         int currParenCounter = 0;
+        int currBracketCounter = 0;
         while(index < lexed.size()) {
             Token t = lexed.at(index);
             if(t.tokenText == "(") {
                 currParenCounter++;
+            }
+            else if (t.tokenText == "[") {
+                currBracketCounter++;
             }
             else if(t.tokenText == ")") {
                 if(currParenCounter == 0) {
@@ -885,8 +889,11 @@ void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsi
                     currParenCounter--;
                 }
             }
+            else if(t.tokenText == "]") {
+                currBracketCounter--;
+            }
             else if(t.tokenType == Comma) {
-                if(currParenCounter == 0) {    
+                if(currParenCounter == 0 && currBracketCounter == 0) {    
                     Token end = t;
                     end.tokenType = End;
                     subexpression.push_back(end);
