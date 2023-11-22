@@ -27,6 +27,7 @@ InfixParser::InfixParser() {
     variables.emplace("len", Value(lenFunc));
     variables.emplace("pop", Value(popFunc));
     variables.emplace("push", Value(pushFunc));
+    updateVariables();
 }
 
 void InfixParser::clearAST() {
