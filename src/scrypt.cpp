@@ -11,6 +11,8 @@
 
 int main() {
     StatementParser par;
+    std::vector<Token> tokens;
+    Token last;
 
     std::string line;
     while(std::getline(std::cin, line)) {
@@ -18,20 +20,40 @@ int main() {
 
         try {
             Lexer lex(stream);
-            std::vector<Token> tokens = lex.getVector();
-            std::cout << std::boolalpha;
-            par.readStatements(tokens);
-            
-
+            std::vector<Token> currLine = lex.getVector();
+            for(Token t: currLine) {
+                if(t.tokenType == End) {
+                    last = t;
+                }
+                else {
+                    tokens.push_back(t);
+                }
+            }
         }
         catch(int errorCode) {
             return errorCode;
         }
         
     }
+
+    tokens.push_back(last);
+
     try {
+        std::cout << std::boolalpha;
+        par.readStatements(tokens);
         par.fillProcedure();
-        par.runProcedure();
+    }
+    catch(int errorCode) {
+        return errorCode;
+    }
+
+    std::vector<StatementNode> procedure = par.getProcedure();
+
+    InfixParser infixPar;
+
+    try {
+        std::cout << std::boolalpha;
+        infixPar.runProcedure(procedure, false);
     }
     catch(int errorCode) {
         return errorCode;
