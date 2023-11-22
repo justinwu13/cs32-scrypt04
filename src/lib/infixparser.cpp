@@ -278,23 +278,7 @@ void InfixParser::greaterequalText(Value &result, Node &root, Token &t){
 void InfixParser::doubleEqual(Value& result, Node& root){
   for(unsigned int i = 1; i < root.children.size(); i++) {
         Value intermediate = evaluateHelper(root.children.at(i));
-        Value::TypeTag compareType = result.type;
-
-        if(result.type != intermediate.type) {
-            result.type = Value::BOOL;
-            result.bool_value = false;
-            return;
-        }
-
-        if (compareType == Value::DOUBLE) {
-            result.bool_value = (result.double_value == intermediate.double_value);
-        }
-        else if (compareType == Value::BOOL) {
-            result.bool_value = (result.bool_value == intermediate.bool_value);
-        }
-        else {
-            result.bool_value = (result.arr_value == intermediate.arr_value);
-        }
+        result.bool_value = result == intermediate;
         result.type = Value::BOOL;
    }
 }
@@ -302,22 +286,7 @@ void InfixParser::doubleEqual(Value& result, Node& root){
 void InfixParser::notEqual(Value& result, Node& root){
     for(unsigned int i = 1; i < root.children.size(); i++) {
         Value intermediate = evaluateHelper(root.children.at(i));
-        Value::TypeTag compareType = result.type;
-
-        if(result.type != intermediate.type) {
-            result.bool_value = false;
-            return;
-        }
-
-        if (compareType == Value::DOUBLE) {
-            result.bool_value = (result.double_value != intermediate.double_value);
-        }
-        else if (compareType == Value::BOOL) {
-            result.bool_value = (result.bool_value != intermediate.bool_value);
-        }
-        else {
-            result.bool_value = (result.arr_value != intermediate.arr_value);
-        }
+        result.bool_value = !(result == intermediate);
         result.type = Value::BOOL;
     }
 }

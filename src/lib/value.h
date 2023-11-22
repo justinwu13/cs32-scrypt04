@@ -108,6 +108,27 @@ struct Value {
         return *this;
     }
 
+    bool operator== (const Value& value) const {
+        if (this->type != value.type) {
+            return false;
+        }
+        if (type == BOOL) {
+            return bool_value == value.bool_value;
+        }
+        else if (type == DOUBLE) {
+            return double_value == value.double_value;
+        }
+        else if (type == ARRAY) {
+            return *arr_value == *value.arr_value;
+        }
+        else if (type == FUNC) {
+            return func_value == value.func_value; // both pointers point to the same memory
+        }
+        else { // both types are null
+            return true;
+        }
+    }
+
     Value(double val) {
         double_value = val;
         // bool_value = false;
