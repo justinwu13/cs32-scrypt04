@@ -13,6 +13,20 @@
 InfixParser::InfixParser() {
     root = Node();
     parenCounter = 0;
+    variables = std::map<std::string, Value>();
+    std::vector<std::string> lenParams;
+    std::vector<std::string> popParams;
+    std::vector<std::string> pushParams;
+    lenParams.push_back("arr");
+    popParams.push_back("arr");
+    pushParams.push_back("arr");
+    pushParams.push_back("toPush");
+    Function lenFunc = Function("len", 0, std::vector<StatementNode>(), lenParams);
+    Function popFunc = Function("pop", 0, std::vector<StatementNode>(), popParams);
+    Function pushFunc = Function("push", 0, std::vector<StatementNode>(), pushParams);
+    variables.emplace("len", Value(lenFunc));
+    variables.emplace("pop", Value(popFunc));
+    variables.emplace("push", Value(pushFunc));
 }
 
 void InfixParser::clearAST() {
@@ -463,6 +477,38 @@ Value InfixParser::evaluateHelper(Node root) {
             }
         }
 
+        if (f.getName() == "len") {
+            Value arr = variables.at(f.parameters.at(0));
+            if (arr.type != Value::ARRAY) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+            }
+            return Value(static_cast<double>(arr.arr_value->size()));
+        }
+        else if (f.getName() == "pop") {
+            Value arr = variables.at(f.parameters.at(0));
+            if (arr.type != Value::ARRAY) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+            }
+            if (arr.arr_value->empty()) {
+                std::string output = "Runtime error: underflow.";
+                runTimeError(output);
+            }
+            Value popped = arr.arr_value->at(arr.arr_value->size() - 1);
+            arr.arr_value->pop_back();
+            return popped;
+        }
+        else if (f.getName() == "push") {
+            Value arr = variables.at(f.parameters.at(0));
+            if (arr.type != Value::ARRAY) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+            }
+            Value toPush = variables.at(f.parameters.at(1));
+            arr.arr_value->push_back(toPush);
+            return Value();
+        }
         return runProcedure(f.procedure, true);
     }
     

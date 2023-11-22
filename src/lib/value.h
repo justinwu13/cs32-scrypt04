@@ -68,12 +68,12 @@ struct Value {
             // arr_value = nullptr;
         }
         else if (value.type == FUNC) {
-            func_value = std::make_shared<Function>(*value.func_value);
+            func_value = value.func_value;
             // bool_value = false;
             // arr_value = nullptr;
         }
         else if (value.type == ARRAY) {
-            arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
+            arr_value = value.arr_value;
             // bool_value = false;
             // double_value = 0.0;
         }
@@ -92,12 +92,12 @@ struct Value {
             // arr_value = nullptr;
         }
         else if (value.type == FUNC) {
-            func_value = std::make_shared<Function>(*value.func_value);
+            func_value = value.func_value;
             // bool_value = false;
             // arr_value = nullptr;
         }
         else if (value.type == ARRAY) {
-            arr_value = std::make_shared<std::vector<Value>>(*value.arr_value);
+            arr_value = value.arr_value;
             // bool_value = false;
             // double_value = 0.0;
         }
