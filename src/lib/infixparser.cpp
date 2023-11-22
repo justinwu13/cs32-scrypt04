@@ -537,10 +537,9 @@ void InfixParser::printTreeHelper(Node root) const {
         if(root.data.tokenType == Number) {
             std::cout << std::stod(root.data.tokenText);
         }
-        else if(root.data.tokenType == Identifier) {
-            std::cout << root.data.tokenText;
-        }
-        else if (root.data.tokenType == Boolean) {
+        else if(root.data.tokenType == Identifier
+            ||  root.data.tokenType == Boolean
+            ||  root.data.tokenType == Nullval) {
             std::cout << root.data.tokenText;
         }
         else if(root.data.tokenType == Funccall) {
