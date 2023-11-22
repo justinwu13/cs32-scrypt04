@@ -18,8 +18,8 @@ InfixParser::InfixParser() {
     std::vector<std::string> popParams;
     std::vector<std::string> pushParams;
     lenParams.push_back("arr");
-    popParams.push_back("arr");
-    pushParams.push_back("arr");
+    popParams.push_back("arrToPop");
+    pushParams.push_back("arrToPush");
     pushParams.push_back("toPush");
     Function lenFunc = Function("len", 0, std::vector<StatementNode>(), lenParams);
     Function popFunc = Function("pop", 0, std::vector<StatementNode>(), popParams);
