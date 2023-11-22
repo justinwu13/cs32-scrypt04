@@ -6,6 +6,7 @@
 #include <vector>
 #include <variant>
 #include <memory>
+#include "function.h"
 
 /**
 struct Value : public std::variant<
@@ -30,17 +31,22 @@ struct Value {
     enum TypeTag {
         DOUBLE,
         BOOL,
-        ARRAY
+        ARRAY,
+        FUNC
     };
 
     TypeTag type;
     double double_value;
     bool bool_value;
     std::shared_ptr<std::vector<Value>> arr_value;
+    std::shared_ptr<Function> func_value;
 
     ~Value() {
         if (type == ARRAY) {
             arr_value.reset();
+        }
+        else if (type == FUNC) {
+            func_value.reset();
         }
     }
 
@@ -53,6 +59,11 @@ struct Value {
         }
         else if (value.type == DOUBLE) {
             double_value = value.double_value;
+            // bool_value = false;
+            // arr_value = nullptr;
+        }
+        else if (value.type == FUNC) {
+            func_value = std::make_shared<Function>(*value.func_value);
             // bool_value = false;
             // arr_value = nullptr;
         }
@@ -72,6 +83,11 @@ struct Value {
         }
         else if (value.type == DOUBLE) {
             double_value = value.double_value;
+            // bool_value = false;
+            // arr_value = nullptr;
+        }
+        else if (value.type == FUNC) {
+            func_value = std::make_shared<Function>(*value.func_value);
             // bool_value = false;
             // arr_value = nullptr;
         }
@@ -103,6 +119,13 @@ struct Value {
         // double_value = 0.0;
         // bool_value = false;
         type = ARRAY;
+    }
+
+    Value(Function& func) {
+        func_value = std::make_shared<Function>(func);
+        // double_value = 0.0;
+        // bool_value = false;
+        type = FUNC;
     }
 };
 

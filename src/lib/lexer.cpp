@@ -179,8 +179,11 @@ void Lexer::typeIdentifier(int lineNumber, unsigned int& columnNumber, std::stri
     if (varName == "true" || varName == "false") { 
         tokens.push_back(Token(lineNumber, originalIndex, varName, Boolean));
     }
-    else if (varName == "print" || varName == "if" || varName == "while" || varName == "else") {
+    else if (varName == "print" || varName == "if" || varName == "while" || varName == "else" || varName == "return") {
         tokens.push_back(Token(lineNumber, originalIndex, varName, Statement));
+    }
+    else if (varName == "def") {
+        tokens.push_back(Token(lineNumber, originalIndex, varName, Funcdef));
     }
     else {
         tokens.push_back(Token(lineNumber, originalIndex, varName, Identifier));

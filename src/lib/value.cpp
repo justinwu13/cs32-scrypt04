@@ -3,12 +3,13 @@
 #include "value.h"
 
 std::ostream& operator << (std::ostream& stream, const Value& value) {
-    if (value.type == Value::DOUBLE)
-    {
+    if (value.type == Value::DOUBLE) {
         stream << value.double_value;
     }
-    else if (value.type == Value::ARRAY)
-    {
+    else if (value.type == Value::FUNC) {
+        stream << value.func_value->getName();
+    }
+    else if (value.type == Value::ARRAY) {
         stream << '[';
         for (unsigned int i = 0; i < value.arr_value->size(); i++) {
             stream << value.arr_value->at(i);
@@ -18,8 +19,7 @@ std::ostream& operator << (std::ostream& stream, const Value& value) {
         }
         stream << ']';
     }
-    else
-    {
+    else {
         stream << value.bool_value;
     }
 
