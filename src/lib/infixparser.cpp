@@ -438,6 +438,10 @@ Value InfixParser::evaluateHelper(Node root) {
             runTimeError(output);
         }
 
+        if(variables.at(t.tokenText).type != Value::FUNC) {
+            std::string output = "Runtime error: not a function.";
+            runTimeError(output);
+        }
         Function f(*variables.at(t.tokenText).func_value);
         if(root.children.size() != f.parameters.size()) {
             std::string output = "Runtime error: incorrect argument count.";
