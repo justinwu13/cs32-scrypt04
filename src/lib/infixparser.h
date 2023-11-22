@@ -6,30 +6,19 @@
 #include <map>
 #include "token.h"
 #include "value.h"
+#include "node.h"
+#include "function.h"
 
 class InfixParser {
     public:
-        struct Node{
-            Token data;
-            std::vector<Node> children;
-
-            Node() {
-                data = Token();
-                std::vector<Node> children = std::vector<Node>();
-            }
-
-            Node(Token data){
-                this->data = data;
-                children = std::vector<Node>();
-            }
-        };
-
         Node root;
 
         InfixParser();
         void fillTreeInfix(std::vector<Token>& lexed);
         Node fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index);
         Node fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence);
+        void fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsigned int& index);
+        Node buildArray(std::vector<Token>& lexed, unsigned int& index);
         void printTree(Node root) const;
         void printTreeHelper(Node root) const;
         void printAll();
@@ -58,7 +47,12 @@ class InfixParser {
 
         void unexpectedTokenError(Token t);
         void runTimeError(std::string output);
+
+        Value runProcedure(std::vector<StatementNode>& currBlock, bool isFunc);
+        Value runProcedureHelper(std::vector<StatementNode>& currBlock, StatementNode& s, unsigned int& index, bool isFunc);
         
+        std::map<std::string, Function> functions;
+
     private:
         int parenCounter;
         std::map<std::string, Value> variables; // updates all variables even if hitting runtime error

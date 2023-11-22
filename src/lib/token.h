@@ -7,14 +7,19 @@ enum TokenType {
     Parenthesis = 0,
     Operator,
     Number,
+    ArrayIndex,
     Identifier,
     Assignment,
     LogicOperator,
     Boolean,
     Statement,
     CurlyBrac,
+    SquareBrac,
     Comma,
     Semicolon,
+    Funcdef,
+    Funccall,
+    Invalidcall,
     End
 };
 
@@ -31,4 +36,3 @@ struct Token {
         tokenType = type;
     }
 };
-

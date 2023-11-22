@@ -46,12 +46,12 @@ Value InfixParser::evaluate(Node root) {
 
 void InfixParser::checkValidity(Value& param1, Value& param2, std::string op) { // determines if the data types of the values are valid for the given operation
     if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%" || op.at(0) == '>' || op.at(0) == '<') {
-        if (param1.type == Value::BOOL || param2.type == Value::BOOL) {
+        if (!(param1.type == Value::DOUBLE && param2.type == Value::DOUBLE)) {
             runTimeError("Runtime error: invalid operand type.");
         }
     }
     else if (op == "&" || op == "^" || op == "|") {
-        if (param1.type == Value::DOUBLE || param2.type == Value::DOUBLE) {
+        if (!(param1.type == Value::BOOL && param2.type == Value::BOOL)) {
             runTimeError("Runtime error: invalid operand type.");
         }
     }
@@ -116,15 +116,65 @@ void InfixParser::diffCases(Value& result, Node& root, Token& t){
 void InfixParser::equalText(Value& result, Node& root){
     for(unsigned int i = 0; i < root.children.size() - 1; i++) {// checks all children except rightmost
         Node& n = root.children.at(i);
+        if (n.data.tokenType == Boolean || n.data.tokenType == Number) {
+            for (unsigned int j = 0; j < n.children.size(); j++) {
+                if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
+                    std::string output = "Runtime error: not an array.";
+                    runTimeError(output);
+                }
+            }
+            std::string output = "Runtime error: invalid assignee.";
+            runTimeError(output);
+        }
+        if (n.data.tokenText == "[") {
+            for (unsigned int j = 0; j < n.children.size(); j++) {
+                if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
+                    return;
+                }
+            }
+        }
         if(n.data.tokenType != Identifier) {// throw error if not variable
-            std::cout << "Runtime error: invalid assignee." << std::endl;
-            throw 3;
+            std::string output = "Runtime error: invalid assignee.";
+            runTimeError(output);
         }
         if(variables.find(n.data.tokenText) == variables.end()) {// create variable data
+            if (!n.children.empty() && n.children.at(0).data.tokenType == ArrayIndex) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+            }
             variables.emplace(n.data.tokenText, result);
         }
         else {// update variable if variable has existing value
-            variables[n.data.tokenText] = result;
+            unsigned int j = 0;
+            if (!n.children.empty() && n.children.at(j).data.tokenType == ArrayIndex) {
+                Value* v = &variables[n.data.tokenText];
+                if (v->type != Value::ARRAY) {
+                    std::string output = "Runtime error: not an array.";
+                    runTimeError(output);
+                }
+                Value arrIndex = evaluateHelper(n.children.at(j).children.at(0));
+                while (j < n.children.size() && n.children.at(j).data.tokenType == ArrayIndex) { // multidimensional array handling
+                    if (arrIndex.type != Value::DOUBLE) {
+                        std::string output = "Runtime error: index is not a number.";
+                        runTimeError(output);
+                    }
+                    double filler; // used solely as parameter for modf function
+                    if (modf(arrIndex.double_value, &filler) != 0) {
+                        std::string output = "Runtime error: index is not an integer.";
+                        runTimeError(output);
+                    }
+                    if (arrIndex.double_value >= v->arr_value->size() || arrIndex.double_value < 0) {
+                        std::string output = "Runtime error: index out of bounds.";
+                        runTimeError(output);
+                    }
+                    v = &v->arr_value->at(arrIndex.double_value); // update v to point to the value needed to change
+                    j++;
+                }
+                *v = result;
+            }
+            else {
+                variables[n.data.tokenText] = result;
+            }
         }
     }
 }
@@ -215,9 +265,9 @@ void InfixParser::doubleEqual(Value& result, Node& root){
   for(unsigned int i = 1; i < root.children.size(); i++) {
         Value intermediate = evaluateHelper(root.children.at(i));
         Value::TypeTag compareType = result.type;
-        result.type = Value::BOOL;
 
         if(result.type != intermediate.type) {
+            result.type = Value::BOOL;
             result.bool_value = false;
             return;
         }
@@ -225,9 +275,13 @@ void InfixParser::doubleEqual(Value& result, Node& root){
         if (compareType == Value::DOUBLE) {
             result.bool_value = (result.double_value == intermediate.double_value);
         }
-        else {
+        else if (compareType == Value::BOOL) {
             result.bool_value = (result.bool_value == intermediate.bool_value);
         }
+        else {
+            result.bool_value = (result.arr_value == intermediate.arr_value);
+        }
+        result.type = Value::BOOL;
    }
 }
 
@@ -235,7 +289,6 @@ void InfixParser::notEqual(Value& result, Node& root){
     for(unsigned int i = 1; i < root.children.size(); i++) {
         Value intermediate = evaluateHelper(root.children.at(i));
         Value::TypeTag compareType = result.type;
-        result.type = Value::BOOL;
 
         if(result.type != intermediate.type) {
             result.bool_value = false;
@@ -245,9 +298,13 @@ void InfixParser::notEqual(Value& result, Node& root){
         if (compareType == Value::DOUBLE) {
             result.bool_value = (result.double_value != intermediate.double_value);
         }
-        else {
+        else if (compareType == Value::BOOL) {
             result.bool_value = (result.bool_value != intermediate.bool_value);
         }
+        else {
+            result.bool_value = (result.arr_value != intermediate.arr_value);
+        }
+        result.type = Value::BOOL;
     }
 }
 
@@ -279,10 +336,64 @@ void InfixParser::caretText(Value& result, Node& root, Token& t){
 
 Value InfixParser::evaluateHelper(Node root) {
     Token t = root.data;
+
+    if(t.tokenType == Invalidcall) {
+        runTimeError("Runtime error: not a function.");
+    }
+
+    if (t.tokenText == "[") {
+        std::vector<Value> arr = std::vector<Value>();
+        for (Node n : root.children) {
+            if (n.data.tokenType != ArrayIndex) {
+                Value val = evaluateHelper(n);
+                arr.push_back(val);
+            }
+        }
+        Value val = Value(arr);
+        Value* v = &val;
+        for (Node n : root.children) { // handles array index
+            if (n.data.tokenType == ArrayIndex) {
+                Value arrIndex = evaluateHelper(n.children.at(0));
+                if (v->type != Value::ARRAY) {
+                    std::string output = "Runtime error: not an array.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                if (arrIndex.type != Value::DOUBLE) {
+                    std::string output = "Runtime error: index is not a number.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                double filler; // used solely as parameter for modf function
+                if (modf(arrIndex.double_value, &filler) != 0) {
+                    std::string output = "Runtime error: index is not an integer.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                if (arrIndex.double_value >= v->arr_value->size() || arrIndex.double_value < 0) {
+                    std::string output = "Runtime error: index out of bounds.";
+                    runTimeError(output);
+                    return -123.4567;
+                }
+                v = &v->arr_value->at(arrIndex.double_value);
+            }
+        }
+        return *v;
+    }
     if(t.tokenType == Number) {// return number value
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+            std::string output = "Runtime error: not an array.";
+            runTimeError(output);
+            return -123.4567;
+        }
         return Value(std::stod(t.tokenText));
     }
     if(t.tokenType == Boolean) {// return boolean value
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) {
+            std::string output = "Runtime error: not an array.";
+            runTimeError(output);
+            return -123.4567;
+        }
         return Value(t.tokenText == "true");
     }
     if(t.tokenType == Identifier) {
@@ -291,7 +402,60 @@ Value InfixParser::evaluateHelper(Node root) {
             runTimeError(output);
             return -123.4567;
         }
-        return variables.at(t.tokenText); // return variable value
+        if (root.children.size() > 0 && root.children.at(0).data.tokenType == ArrayIndex) { // todo: make this work for multidimensional arrays
+            Value arrIndex = evaluateHelper(root.children.at(0).children.at(0));
+            if (variables.at(t.tokenText).type != Value::ARRAY) {
+                std::string output = "Runtime error: not an array.";
+                runTimeError(output);
+                return -123.4567;
+            } 
+            if (arrIndex.type != Value::DOUBLE) {
+                std::string output = "Runtime error: index is not a number.";
+                runTimeError(output);
+                return -123.4567;
+            }
+            double filler; // used solely as parameter for modf function
+            if (modf(arrIndex.double_value, &filler) != 0) {
+                std::string output = "Runtime error: index is not an integer.";
+                runTimeError(output);
+                return -123.4567;
+            }
+            if (arrIndex.double_value >= variables.at(t.tokenText).arr_value->size() || arrIndex.double_value < 0) {
+                std::string output = "Runtime error: index out of bounds.";
+                runTimeError(output);
+                return -123.4567;
+            }
+            return variables.at(t.tokenText).arr_value->at(arrIndex.double_value);
+        }
+        else {
+            return variables.at(t.tokenText); // return variable value
+        }
+    }
+
+    if(t.tokenType == Funccall) {
+        if(functions.find(t.tokenText) == functions.end()) {
+            std::string output = "Runtime error: unknown identifier " + t.tokenText;
+            runTimeError(output);
+        }
+
+        Function f(functions.at(t.tokenText));
+        if(root.children.size() != f.parameters.size()) {
+            std::string output = "Runtime error: incorrect argument count.";
+            runTimeError(output);
+        }
+
+        for(unsigned int i = 0; i < root.children.size(); i++) { // initialize parameters
+            std::string varName = f.parameters.at(i);
+            Value val = evaluate(root.children.at(i));
+            if(variables.find(varName) != variables.end()) {
+                variables[varName] = val;
+            }
+            else {
+                variables.emplace(varName, val);
+            }
+        }
+
+        return runProcedure(f.procedure, true);
     }
     
     if(root.children.size() == 0) {
@@ -336,31 +500,80 @@ void InfixParser::printTreeHelper(Node root) const {
         std::cout << "(";
     }
 
-    if(root.data.tokenType == Number) {
-        std::cout << std::stod(root.data.tokenText);
-    }
-    else if(root.data.tokenType == Identifier) {
-        std::cout << root.data.tokenText;
-    }
-    else if (root.data.tokenType == Boolean) {
-        std::cout << root.data.tokenText;
-    }
-
-    // prints the operator between the children
-    for(unsigned int i = 0; i < root.children.size(); i++) {
-        Node n = root.children.at(i);
-        if(i == 0) {
-            printTreeHelper(n);
+    if (root.data.tokenText == "[") { // print out an array
+        std::cout << "[";
+        for(unsigned int i = 0; i < root.children.size(); i++) {
+            Node n = root.children.at(i);
+            if (n.data.tokenType == ArrayIndex) {
+                continue;
+            }
+            if(i == 0) {
+                printTreeHelper(n);
+            }
+            else {
+                std::cout << ", ";
+                printTreeHelper(n);
+            }
         }
-        else {
-            std::cout << " " << root.data.tokenText << " ";
-            printTreeHelper(n);
+        std::cout << "]";
+        for(unsigned int i = 0; i < root.children.size(); i++) { // loop again to print array indices if needed
+            Node n = root.children.at(i);
+            if (n.data.tokenType == ArrayIndex) {
+                std::cout << "[";
+                printTreeHelper(root.children.at(i).children.at(0)); // print index
+                std::cout << "]";
+            }
         }
     }
+    else {
+        if(root.data.tokenType == Number) {
+            std::cout << std::stod(root.data.tokenText);
+        }
+        else if(root.data.tokenType == Identifier) {
+            std::cout << root.data.tokenText;
+        }
+        else if (root.data.tokenType == Boolean) {
+            std::cout << root.data.tokenText;
+        }
+        else if(root.data.tokenType == Funccall) {
+            std::cout << root.data.tokenText << "(";
+            for(unsigned int i = 0; i < root.children.size(); i++) {
+                Node n = root.children.at(i);
+                if(i == 0) {
+                    printTreeHelper(n);
+                }
+                else {
+                    std::cout << ", ";
+                    printTreeHelper(n);
+                }
+            }
+            std::cout << ")";
+            return;
+        }
 
-    // prints parenthesis for each operator
-    if(op) {
-        std::cout << ")";
+        // prints the operator between the children
+        for(unsigned int i = 0; i < root.children.size(); i++) {
+            Node n = root.children.at(i);
+            if (root.children.at(i).data.tokenType == ArrayIndex) {
+                // print out an array index
+                std::cout << "[";
+                printTreeHelper(root.children.at(i).children.at(0)); // print index
+                std::cout << "]";
+            }
+            else if (i == 0) {
+                printTreeHelper(n);
+            }
+            else {
+                std::cout << " " << root.data.tokenText << " ";
+                printTreeHelper(n);
+            }
+        }
+        
+
+        // prints parenthesis for each operator
+        if(op) {
+            std::cout << ")";
+        }
     }
 }
 
@@ -420,9 +633,8 @@ void InfixParser::fillTreeInfix(std::vector<Token>& lexed) {
 }
 
 // Add stuff for assignment operator once Lexer is updated
-InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index) {
+Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, unsigned int& index) {
     Node lhs = Node(Token());
-
     Token t1 = lexed.at(index);
     if(t1.tokenType == Number || t1.tokenType == Identifier || t1.tokenType == Boolean) {
         lhs = Node(t1);
@@ -430,23 +642,32 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
         if(t2.tokenType == End) {
             // if the first token is a number and the second is End, return because there is nothing
             // more to do
-            return Node(t1);
+            return lhs;
         }
-        else if(t2.tokenText == ")") {// end the current subtree when reaching ")"
+        else if(t2.tokenText == ")") { // end the current subtree when reaching ")"
             if(parenCounter == 0) {// throw error if ")" outnumbers "(" 
                 unexpectedTokenError(t2);
             }
             parenCounter--;
-            return Node(t1);
+            return lhs;
+        }
+        else if (t2.tokenText == ",") { // end subtree when reaching comma
+            return lhs;
+        }
+        else if (t2.tokenText == "]") { // end subtree when reaching right bracket
+            index--;
+            return lhs;
         }
     }
-    else if(t1.tokenText == "(") {// treat everything inside parethesis as its own subtree/subexpression
+    else if(t1.tokenText == "(") {// treat everything inside parenthesis as its own subtree/subexpression
         parenCounter++;
         index++;
         lhs = fillTreeSubexpression(lexed, index);
-        if(lhs.children.size() == 0) {
-            return lhs;
-        }
+        index++;
+    }
+    else if(t1.tokenText == "[") { // array
+        // std::cout << "BUILDING ARRAY" << std::endl;
+        lhs = buildArray(lexed, index);
     }
     else {
         unexpectedTokenError(t1);
@@ -458,13 +679,48 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
         if(t.tokenType == End) {
             break;
         }
+        else if(t.tokenText == "(") { // function call
+            if(t1.tokenType != Number && t1.tokenType != Identifier) {
+                unexpectedTokenError(t);
+            }
+            lhs.data.tokenType = Funccall;
+            if(t1.tokenType != Identifier) {
+                lhs.data.tokenType = Invalidcall;
+            }
+            fillFunctionCall(lhs, lexed, ++index);
+        }
         else if(t.tokenText == ")") {// end the current subtree when reaching ")"
-            index++;
+            if(t1.tokenText != "(") {
+                index++;
+            }
             if(parenCounter == 0) {// throw error if ")" outnumbers "(" 
                 unexpectedTokenError(t);
             }
             parenCounter--;
             break;
+        }
+        else if(t.tokenText == ",") {// end the current subtree when reaching ","
+            // unexpectedTokenError(lexed.at(index));
+            break;
+        }
+        else if(t.tokenText == "]") {// end the current subtree when reaching "]"
+            index--;
+            break;
+        }
+        else if (t.tokenText == "[") { // array index
+            // std::cout << "ARRAY INDEX" << std::endl;
+            Node arrIndex = Node(Token(t.lineNumber, t.columnNumber, t.tokenText, ArrayIndex));
+            index++;
+            Node indExpression = fillTreeSubexpression(lexed, index);
+            arrIndex.children.push_back(indExpression);
+            lhs.children.push_back(arrIndex); // makes first child/children of the Identifier node ArrayIndex type(s)
+            if (lexed.at(index).tokenType == Comma) { // array format in an array index
+                unexpectedTokenError(lexed.at(index));
+            }
+            while (index < lexed.size() && lexed.at(index).tokenText != "]") {
+                index++;
+            }
+            index++; // moves index after closed brackets
         }
         else if(t.tokenType == Operator || t.tokenType == Assignment || t.tokenType == LogicOperator) {
             Node opNode = Node(t); // new head of the tree/subtree 
@@ -502,7 +758,7 @@ InfixParser::Node InfixParser::fillTreeSubexpression(std::vector<Token>& lexed, 
     return lhs;
 }
 
-InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence) {
+Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, unsigned int& index, unsigned int currPrecedence) {
     Node lhs;
     Token t = lexed.at(index); // either a number, variable, or subexpression
     if(t.tokenType == Number || t.tokenType == Identifier || t.tokenType == Boolean) {
@@ -514,14 +770,24 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
         lhs = fillTreeSubexpression(lexed, index);
         index--;
     }
+    else if(t.tokenText == "[") { // array
+        lhs = fillTreeSubexpression(lexed, index);
+    }
     else {
         unexpectedTokenError(t);
     }
 
-    while(index < lexed.size()) {
+    while(index < lexed.size() - 1) {
         Token t2 = lexed.at(++index); // should be an operator or ")" or End token
         if(t2.tokenType == End || t2.tokenType == Assignment) {
             return lhs;
+        }
+        else if(t2.tokenText == "(") {
+            if(t.tokenType != Number && t.tokenType != Identifier) {
+                unexpectedTokenError(t2);
+            }
+            lhs.data.tokenType = Funccall;
+            fillFunctionCall(lhs, lexed, ++index);
         }
         else if(t2.tokenText == ")") {// end the current subtree when reaching ")"
             if(parenCounter == 0) {
@@ -530,6 +796,26 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
             parenCounter--;
             index++;
             return lhs;
+        }
+        else if(t2.tokenText == ",") {// end the current subtree when reaching ","
+            return lhs;
+        }
+        else if(t2.tokenText == "]") {// end the current subtree when reaching "]"
+            return lhs;
+        }
+        else if (t2.tokenText == "[") { // array index
+            Node arrIndex = Node(Token(t2.lineNumber, t2.columnNumber, t2.tokenText, ArrayIndex));
+            index++;
+            Node indExpression = fillTreeSubexpression(lexed, index);
+            arrIndex.children.push_back(indExpression);
+            lhs.children.push_back(arrIndex); // makes first child/children of the Identifier node ArrayIndex type(s)
+            if (lexed.at(index).tokenType == Comma) { // array format in an array index
+                unexpectedTokenError(lexed.at(index));
+            }
+            while (index < lexed.size() && lexed.at(index).tokenText != "]") {
+                index++;
+            }
+            index++; // moves index after closed brackets
         }
         else if(t2.tokenType != Operator && t2.tokenType != LogicOperator) {
             unexpectedTokenError(t2);
@@ -546,7 +832,160 @@ InfixParser::Node InfixParser::fillTreeInfixHelper(std::vector<Token>& lexed, un
         index--;
         opNode.children.push_back(rhs);
         lhs = opNode;
-    }
+    }  
 
     return lhs;
+}
+
+void InfixParser::fillFunctionCall(Node& parent, std::vector<Token>& lexed, unsigned int& index) {
+    if(lexed.at(index).tokenText == ")") {
+        index++;
+        return;
+    }
+
+    while(true) { // should eventually break or throw error so this is fine
+        std::vector<Token> subexpression;
+        int currParenCounter = 0;
+        while(index < lexed.size()) {
+            Token t = lexed.at(index);
+            if(t.tokenText == "(") {
+                currParenCounter++;
+            }
+            else if(t.tokenText == ")") {
+                if(currParenCounter == 0) {
+                    Token end = t;
+                    end.tokenType = End;
+                    subexpression.push_back(end);
+                    break;
+                }
+                else {
+                    currParenCounter--;
+                }
+            }
+            else if(t.tokenType == Comma) {
+                if(currParenCounter == 0) {    
+                    Token end = t;
+                    end.tokenType = End;
+                    subexpression.push_back(end);
+                    break;
+                }
+            }
+            else if(t.tokenType == End) {
+                unexpectedTokenError(t);
+            }
+
+            subexpression.push_back(t);
+            index++;
+        }
+
+        Token end = lexed.at(index++);
+        unsigned int subIndex = 0;
+        parent.children.push_back(fillTreeSubexpression(subexpression, subIndex));
+
+        if(end.tokenText == ")") {
+            break;
+        }
+    }
+    // debug print std::cout << parent.children.size() << std::endl;
+}
+
+
+Node InfixParser::buildArray(std::vector<Token>& lexed, unsigned int& index) {
+    Token t = lexed.at(index); // should be left square bracket
+    Node arrHead = Node(t);
+    while(index < lexed.size() - 1) {
+        Token t2 = lexed.at(++index);
+        if(t2.tokenType == End || t2.tokenType == Assignment) {
+            return arrHead;
+        }
+        else if(t2.tokenType == Comma) {
+            continue;
+        }
+        else if (t2.tokenText == "]") {
+            index++;
+            return arrHead;
+        }
+        else {
+            Node child = fillTreeSubexpression(lexed, index);
+            arrHead.children.push_back(child); // adds all the elements of the array as a child to the left bracket node
+        }
+    }
+    return arrHead;
+}
+
+// runs the statements in the specified block
+Value InfixParser::runProcedure(std::vector<StatementNode>& currBlock, bool isFunc) {
+    for(unsigned int i = 0; i < currBlock.size(); i++) { // runs every statement in the block
+        StatementNode& s = currBlock.at(i);
+        Value v = runProcedureHelper(currBlock, s, i, isFunc); 
+
+        if(v.double_value != -0.888) {
+            return v;
+        }
+    }
+    return Value(-0.888);
+}
+
+Value InfixParser::runProcedureHelper(std::vector<StatementNode>& currBlock, StatementNode& s, unsigned int& index, bool isFunc) {
+    Value result(-0.888);
+    if(s.statementToken.tokenType == Statement) {
+        std::string instruction = s.statementToken.tokenText;
+
+        if(instruction == "print") { // simple case
+            std::cout << evaluate(s.infixExpression) << std::endl;
+        }
+        else if(instruction == "if") {
+            Value condition = evaluate(s.infixExpression);
+            if(condition.type != Value::BOOL) { // throw error if condition does not evaluate to bool
+                std::cout << "Runtime error: condition is not a bool." << std::endl;
+                throw 3;
+            }
+
+            if(condition.bool_value == true) { // if block runs if condition is true
+                if(index + 1 < currBlock.size() && currBlock.at(index + 1).statementToken.tokenText == "else") {
+                    index++; // skips following else block if condition is true
+                }
+                result = runProcedure(s.children, isFunc); // run the statements in the block
+            }
+        }
+        else if(instruction == "while") {
+            while(true) { // keep running the block
+                Value condition = evaluate(s.infixExpression);
+                if(condition.type != Value::BOOL) { // throw error if condition does not evaluate to bool
+                    std::cout << "Runtime error: condition is not a bool." << std::endl;
+                    throw 3;
+                }
+
+                if(condition.bool_value == true) {
+                    result = runProcedure(s.children, isFunc); // run the statements in the block
+                }
+                else {
+                    break; // stop running the block if the condition is false
+                }
+            }
+            
+        }
+        else if(s.statementToken.tokenText == "return") {
+            result = evaluate(s.infixExpression);
+            if(!isFunc) {
+                std::string output = "Runtime error: unexpected return.";
+                runTimeError(output);
+            }
+            return result;
+        }
+        else { // should be "else", this case will only run if the previous "if" did not run
+            result = runProcedure(s.children, isFunc); // run the statements in the block
+        }
+    }
+    else if(s.statementToken.tokenType == Funcdef) {
+        Function func(s.statementToken.tokenText, s.indentationLevel, s.children, s.params);
+        functions.emplace(s.statementToken.tokenText, func);
+    }
+    else { // should be an expression
+        evaluate(s.infixExpression);
+    }
+    if(result.double_value != -0.888) {
+        return result;
+    }
+    return Value(-0.888);
 }
